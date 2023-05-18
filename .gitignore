@@ -4,6 +4,7 @@ __pycache__
 *.ipynb
 .venv
 *.png
+*.svg
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
