@@ -17,6 +17,9 @@ def add_basemap(
     if not isinstance(chart, alt.Chart):
         raise TypeError("Only altair.Chart instances are supported.")
 
+    if zoom is not None and not isinstance(zoom, int):
+        raise TypeError("Zoom must be an integer or None.")
+
     _validate_chart(chart)
 
     if (
@@ -33,16 +36,16 @@ def add_basemap(
     # Convert to string in case it is a Vega expression
     p_pr_scale = alt.param(expr=str(scale), name="pr_scale")
 
-    p_base_tile_size = alt.param(value=256, name="base_tile_size")
-
     if zoom is not None:
-        # Need to first adapt calculations below as currently tiles are
-        # not placed accurately when zoom is set.
-        raise NotImplementedError("Zoom level is not yet supported.")
         p_zoom_level = alt.param(value=zoom, name="zoom_level")
+        p_base_tile_size = alt.param(
+            expr=f"(2 * PI * {p_pr_scale.name}) / pow(2, {p_zoom_level.name})",
+            name="base_tile_size",
+        )
     else:
         # Calculate an appropriate zoom level based on the projection scale
         # and the tile size.
+        p_base_tile_size = alt.param(value=256, name="base_tile_size")
         p_zoom_level = alt.param(
             expr=f"log((2 * PI * {p_pr_scale.name}) / {p_base_tile_size.name}) / log(2)",
             name="zoom_level",
