@@ -8,3 +8,4 @@ ruff
 ipykernel
 mypy
 vega-datasets
+vl-convert-python

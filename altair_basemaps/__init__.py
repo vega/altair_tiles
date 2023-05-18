@@ -1,6 +1,8 @@
 __version__ = "0.1.0dev"
 __all__ = ["add_basemap", "providers"]
 
+import math
+from typing import Optional
 
 import altair as alt
 import xyzservices.providers as providers
@@ -8,17 +10,44 @@ from xyzservices import TileProvider
 
 
 def add_basemap(
-    chart: alt.Chart, source: TileProvider = providers.OpenStreetMap.Mapnik
+    chart: alt.Chart,
+    source: TileProvider = providers.OpenStreetMap.Mapnik,
+    zoom: Optional[int] = None,
 ) -> alt.LayerChart:
     if not isinstance(chart, alt.Chart):
         raise TypeError("Only altair.Chart instances are supported.")
 
+    _validate_chart(chart)
+
+    if (
+        chart.projection is not alt.Undefined
+        and chart.projection.scale is not alt.Undefined
+    ):
+        scale = chart.projection.scale
+    else:
+        # Need to figure out default value for scale for mercator projection.
+        # 961 / math.tau does not work. Found here:
+        # https://github.com/d3/d3-geo/blob/main/src/projection/mercator.js#L13
+        raise NotImplementedError
+        scale = 961 / math.tau
+    # Convert to string in case it is a Vega expression
+    p_pr_scale = alt.param(expr=str(scale), name="pr_scale")
+
     p_base_tile_size = alt.param(value=256, name="base_tile_size")
-    p_pr_scale = alt.param(expr=str(chart.projection.scale), name="pr_scale")
-    p_zoom_level = alt.param(
-        expr=f"log((2 * PI * {p_pr_scale.name}) / {p_base_tile_size.name}) / log(2)",
-        name="zoom_level",
-    )
+
+    if zoom is not None:
+        # Need to first adapt calculations below as currently tiles are
+        # not placed accurately when zoom is set.
+        raise NotImplementedError("Zoom level is not yet supported.")
+        p_zoom_level = alt.param(value=zoom, name="zoom_level")
+    else:
+        # Calculate an appropriate zoom level based on the projection scale
+        # and the tile size.
+        p_zoom_level = alt.param(
+            expr=f"log((2 * PI * {p_pr_scale.name}) / {p_base_tile_size.name}) / log(2)",
+            name="zoom_level",
+        )
+
     p_zoom_ceil = alt.param(expr=f"ceil({p_zoom_level.name})", name="zoom_ceil")
     p_tiles_count = alt.param(expr=f"pow(2, {p_zoom_ceil.name})", name="tiles_count")
     p_tile_size = alt.param(
@@ -99,3 +128,11 @@ def add_basemap(
         p_dy,
     )
     return layered_chart
+
+
+def _validate_chart(chart: alt.Chart) -> None:
+    if chart.projection is alt.Undefined or chart.projection.type != "mercator":
+        raise ValueError("Chart must have a Mercator projection.")
+
+    if chart.projection is alt.Undefined or chart.projection.scale is alt.Undefined:
+        raise ValueError("Chart must have a projection scale set.")
