@@ -13,7 +13,26 @@ def add_basemap(
     chart: alt.Chart,
     source: TileProvider = providers.OpenStreetMap.Mapnik,
     zoom: Optional[int] = None,
+    grid_num_columns: int = 10,
+    grid_num_rows: int = 10,
 ) -> alt.LayerChart:
+    # Size of tile grid needs to be calculated in Python as it is not possible
+    # yet to use an expression in a data generator such as a sequence.
+    # See https://github.com/vega/vega-lite/issues/7410
+    # The issue with this is that it depends on the size of the chart which
+    # we cannot yet know at this point as it might be changed by e.g. a theme
+    # or by the user themselves when working with the returned layered chart.
+    # The default values for num_grid_columns and num_grid_rows are the same
+    # to produce a quadratic grid which should be large
+    # enough for most use cases. The user can use the input arguments
+    # to overwrite this in case the default size is not large enough.
+    # Tiles seem to be only fetched in a browser if they are visible and not clipped
+    # so there should be not much of a downside when using a large grid by default.
+    # If we could access the size of the chart in the Python code, we could
+    # calculate the grid size using something like
+    # grid_num_columns = ceil(width/p_tile_size +1)
+    # grid_num_rows = ceil(height/p_tile_size +1)
+
     if not isinstance(chart, alt.Chart):
         raise TypeError("Only altair.Chart instances are supported.")
 
@@ -95,7 +114,7 @@ def add_basemap(
             + "'"
         )
 
-    tile_list = alt.sequence(0, 8, as_="a", name="tile_list")
+    tile_list = alt.sequence(0, grid_num_columns, as_="a", name="tile_list")
     tiles = (
         alt.Chart(tile_list)
         .mark_image(
@@ -106,7 +125,7 @@ def add_basemap(
             width=alt.expr(p_tile_size.name + " + 1"),
         )
         .encode(alt.Url("url:N"), alt.X("x:Q").scale(None), alt.Y("y:Q").scale(None))
-        .transform_calculate(b="sequence(0, 8)")
+        .transform_calculate(b=f"sequence(0, {grid_num_rows})")
         .transform_flatten(["b"])
         .transform_calculate(
             url=build_url(source, x=expr_url_x, y=expr_url_y, z=p_zoom_ceil.name),
