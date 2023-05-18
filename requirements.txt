@@ -1,0 +1,10 @@
+altair
+xyzservices
+
+# Dev
+geopandas
+black
+ruff
+ipykernel
+mypy
+vega-datasets

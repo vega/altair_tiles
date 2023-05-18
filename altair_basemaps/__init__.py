@@ -1,0 +1,101 @@
+__version__ = "0.1.0dev"
+__all__ = ["add_basemap", "providers"]
+
+
+import altair as alt
+import xyzservices.providers as providers
+from xyzservices import TileProvider
+
+
+def add_basemap(
+    chart: alt.Chart, source: TileProvider = providers.OpenStreetMap.Mapnik
+) -> alt.LayerChart:
+    if not isinstance(chart, alt.Chart):
+        raise TypeError("Only altair.Chart instances are supported.")
+
+    p_base_tile_size = alt.param(value=256, name="base_tile_size")
+    p_pr_scale = alt.param(expr=str(chart.projection.scale), name="pr_scale")
+    p_zoom_level = alt.param(
+        expr=f"log((2 * PI * {p_pr_scale.name}) / {p_base_tile_size.name}) / log(2)",
+        name="zoom_level",
+    )
+    p_zoom_ceil = alt.param(expr=f"ceil({p_zoom_level.name})", name="zoom_ceil")
+    p_tiles_count = alt.param(expr=f"pow(2, {p_zoom_ceil.name})", name="tiles_count")
+    p_tile_size = alt.param(
+        expr=p_base_tile_size.name
+        + f" * pow(2, {p_zoom_level.name} - {p_zoom_ceil.name})",
+        name="tile_size",
+    )
+    p_base_point = alt.param(expr="invert('projection', [0, 0])", name="base_point")
+    p_dii = alt.param(
+        expr=f"({p_base_point.name}[0] + 180) / 360 * {p_tiles_count.name}", name="dii"
+    )
+    p_dii_floor = alt.param(expr=f"floor({p_dii.name})", name="dii_floor")
+    p_dx = alt.param(
+        expr=f"({p_dii_floor.name} - {p_dii.name}) * {p_tile_size.name}", name="dx"
+    )
+    p_djj = alt.param(
+        expr=f"(1 - log(tan({p_base_point.name}[1] * PI / 180)"
+        + f" + 1 / cos({p_base_point.name}[1] * PI / 180)) / PI)"
+        + f" / 2 * {p_tiles_count.name}",
+        name="djj",
+    )
+    p_djj_floor = alt.param(expr=f"floor({p_djj.name})", name="djj_floor")
+    p_dy = alt.param(
+        expr=f"round(({p_djj_floor.name} - {p_djj.name}) * {p_tile_size.name})",
+        name="dy",
+    )
+    expr_url_x = (
+        f"((datum.a + {p_dii_floor.name} + {p_tiles_count.name})"
+        + f" % {p_tiles_count.name})"
+    )
+    expr_url_y = f"(datum.b + {p_djj_floor.name})"
+
+    def build_url(provider: TileProvider, x: str, y: str, z: str) -> str:
+        def format_value(v: str) -> str:
+            return f"' + {v} + '"
+
+        return (
+            "'"
+            + provider.build_url(
+                x=format_value(x), y=format_value(y), z=format_value(z)
+            )
+            + "'"
+        )
+
+    tile_list = alt.sequence(0, 8, as_="a", name="tile_list")
+    tiles = (
+        alt.Chart(tile_list)
+        .mark_image(
+            clip=True,
+            # For some settings, the tiles would show a fine gap between them. By adding
+            # 1px to the height and width, we can avoid this.
+            height=alt.expr(p_tile_size.name + " + 1"),
+            width=alt.expr(p_tile_size.name + " + 1"),
+        )
+        .encode(alt.Url("url:N"), alt.X("x:Q").scale(None), alt.Y("y:Q").scale(None))
+        .transform_calculate(b="sequence(0, 8)")
+        .transform_flatten(["b"])
+        .transform_calculate(
+            url=build_url(source, x=expr_url_x, y=expr_url_y, z=p_zoom_ceil.name),
+            x=f"datum.a * {p_tile_size.name} + {p_dx.name} + ({p_tile_size.name} / 2)",
+            y=f"datum.b * {p_tile_size.name} + {p_dy.name} + ({p_tile_size.name} / 2)",
+        )
+    )
+
+    layered_chart = (tiles + chart).add_params(
+        p_base_tile_size,
+        p_pr_scale,
+        p_zoom_level,
+        p_zoom_ceil,
+        p_tiles_count,
+        p_tile_size,
+        p_base_point,
+        p_dii,
+        p_dii_floor,
+        p_dx,
+        p_djj,
+        p_djj_floor,
+        p_dy,
+    )
+    return layered_chart
