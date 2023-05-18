@@ -1,4 +1,4 @@
-# altair_basemaps
+# altair_basemap
 
 This package is in a **very early development stage** and should not yet be used for anything serious.
 

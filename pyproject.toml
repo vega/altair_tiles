@@ -13,13 +13,13 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "altair_basemaps"
-authors = [ {name = "altair_basemaps contributors"} ]
+name = "altair_basemap"
+authors = [ {name = "altair_basemap contributors"} ]
 dependencies = [
     "altair",
     "xyzservices"
 ]
-description = "altair_basemaps"
+description = "altair_basemap"
 readme = "README.md"
 keywords = [
     "altair",
@@ -40,7 +40,7 @@ classifiers= [
 ]
 
 [project.urls]
-Source = "https://github.com/binste/altair_basemaps"
+Source = "https://github.com/binste/altair_basemap"
 
 [project.optional-dependencies]
 dev = [
@@ -56,13 +56,13 @@ dev = [
 ]
 
 [tool.hatch.version]
-path = "altair_basemaps/__init__.py"
+path = "altair_basemap/__init__.py"
 
 [tool.hatch.metadata]
 allow-direct-references = true
 
 [tool.hatch.build]
-include = ["/altair_basemaps"]
+include = ["/altair_basemap"]
 
 [tool.hatch.envs.default]
 features = ["dev"]
@@ -71,7 +71,7 @@ features = ["dev"]
 test = [
     "black --diff --color --check .",
     "ruff check .",
-    "mypy altair_basemaps",
+    "mypy altair_basemap",
     # "python -m pytest tests"
 ]
 
@@ -86,6 +86,7 @@ exclude = '''
   | \.mypy_cache
   | build
   | dist
+  | .venv
 )/
 '''
 
@@ -133,6 +134,7 @@ exclude = [
 module = [
     "vega_datasets.*",
     "vl_convert.*",
-    "altair"
+    "altair",
+    "xyzservices.*",
 ]
 ignore_missing_imports = true
