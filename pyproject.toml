@@ -1,0 +1,138 @@
+# this file contains:
+# 1 build system configuration
+# 2 project configuration
+# 3 tool configuration, for:
+# - hatch
+# - black
+# - ruff
+# - pytest
+# - mypy
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "altair_basemaps"
+authors = [ {name = "altair_basemaps contributors"} ]
+dependencies = [
+    "altair",
+    "xyzservices"
+]
+description = "altair_basemaps"
+readme = "README.md"
+keywords = [
+    "altair",
+    "basemaps",
+    "tiles"
+]
+requires-python = ">=3.7"
+dynamic = ["version"]
+license-files = { paths = ["LICENSE"] }
+classifiers= [
+    "License :: OSI Approved :: BSD License",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+
+[project.urls]
+Source = "https://github.com/binste/altair_basemaps"
+
+[project.optional-dependencies]
+dev = [
+    "hatch",
+    "ruff",
+    "black<24",
+    "ipython",
+    "pytest",
+    "geopandas",
+    "vega_datasets",
+    "vl-convert-python",
+    "mypy"
+]
+
+[tool.hatch.version]
+path = "altair_basemaps/__init__.py"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build]
+include = ["/altair_basemaps"]
+
+[tool.hatch.envs.default]
+features = ["dev"]
+
+[tool.hatch.envs.default.scripts]
+test = [
+    "black --diff --color --check .",
+    "ruff check .",
+    "mypy altair_basemaps",
+    # "python -m pytest tests"
+]
+
+[tool.black]
+line-length = 88
+target-version = ["py37", "py38", "py39", "py310", "py311"]
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.eggs
+  | \.git
+  | \.mypy_cache
+  | build
+  | dist
+)/
+'''
+
+[tool.ruff]
+target-version = "py310"
+line-length = 88
+select = [
+    # flake8-bugbear
+    "B",
+    # flake8-comprehensions
+    "C4",
+    # pycodestyle-error
+    "E",
+    # pycodestyle-warning
+    "W",
+    # pyflakes
+    "F",
+    # flake8-tidy-imports
+    "TID"
+]
+ignore = [
+    # E203, E266, W503 not yet supported by ruff,
+    # see https://github.com/charliermarsh/ruff/issues/2402
+    # Whitespace before ':'
+    # "E203",
+    # Too many leading '#' for block comment
+    # "E266",
+    # Line break occurred before a binary operator
+    # "W503",
+    # Line too long
+    "E501",
+    # Relative imports are banned
+    "TID252",
+    # zip() without an explicit strict= parameter set.
+    # python>=3.10 only
+    "B905"
+]
+exclude = [
+    ".git",
+    "build",
+    "__pycache__",
+]
+
+[[tool.mypy.overrides]]
+module = [
+    "vega_datasets.*",
+    "vl_convert.*",
+    "altair"
+]
+ignore_missing_imports = true

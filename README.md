@@ -9,5 +9,10 @@ Inspired by [contextily](https://github.com/geopandas/contextily) and the work s
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -e '.[dev]'
+```
+
+Run linters (and soon tests) with
+```bash
+hatch run test
 ```
