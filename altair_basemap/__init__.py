@@ -158,3 +158,6 @@ def _validate_chart(chart: alt.Chart) -> None:
 
     if chart.projection is alt.Undefined or chart.projection.scale is alt.Undefined:
         raise ValueError("Chart must have a projection scale set.")
+
+    if chart.mark.type != "geoshape":
+        raise ValueError("Chart must have a geoshape mark.")
