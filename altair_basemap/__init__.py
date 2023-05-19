@@ -2,50 +2,42 @@ __version__ = "0.1.0dev"
 __all__ = ["add_basemap", "providers"]
 
 import math
-from typing import Optional
+from typing import Optional, Union
 
 import altair as alt
 import xyzservices.providers as providers
 from xyzservices import TileProvider
 
+# Size of tile grid needs to be calculated in Python as it is not possible
+# yet to use an expression in a data generator such as a sequence.
+# See https://github.com/vega/vega-lite/issues/7410
+# The issue with this is that it depends on the size of the chart which
+# we cannot yet know at this point as it might be changed by e.g. a theme
+# or by the user themselves when working with the returned layered chart.
+# The default values for num_grid_columns and num_grid_rows are the same
+# to produce a quadratic grid which should be large
+# enough for most use cases. The user can use the input arguments
+# to overwrite this in case the default size is not large enough.
+# Tiles seem to be only fetched in a browser if they are visible and not clipped
+# so there should be not much of a downside when using a large grid by default.
+# If we could access the size of the chart in the Python code, we could
+# calculate the grid size using something like
+# grid_num_columns = ceil(width/p_tile_size +1)
+# grid_num_rows = ceil(height/p_tile_size +1)
 
-def add_basemap(
-    chart: alt.Chart,
+
+def create_tiles_chart(
+    projection: alt.Projection,
     source: TileProvider = providers.OpenStreetMap.Mapnik,
     zoom: Optional[int] = None,
     grid_num_columns: int = 10,
     grid_num_rows: int = 10,
-) -> alt.LayerChart:
-    # Size of tile grid needs to be calculated in Python as it is not possible
-    # yet to use an expression in a data generator such as a sequence.
-    # See https://github.com/vega/vega-lite/issues/7410
-    # The issue with this is that it depends on the size of the chart which
-    # we cannot yet know at this point as it might be changed by e.g. a theme
-    # or by the user themselves when working with the returned layered chart.
-    # The default values for num_grid_columns and num_grid_rows are the same
-    # to produce a quadratic grid which should be large
-    # enough for most use cases. The user can use the input arguments
-    # to overwrite this in case the default size is not large enough.
-    # Tiles seem to be only fetched in a browser if they are visible and not clipped
-    # so there should be not much of a downside when using a large grid by default.
-    # If we could access the size of the chart in the Python code, we could
-    # calculate the grid size using something like
-    # grid_num_columns = ceil(width/p_tile_size +1)
-    # grid_num_rows = ceil(height/p_tile_size +1)
-
-    if not isinstance(chart, alt.Chart):
-        raise TypeError("Only altair.Chart instances are supported.")
-
-    if zoom is not None and not isinstance(zoom, int):
-        raise TypeError("Zoom must be an integer or None.")
-
-    _validate_chart(chart)
-
-    if (
-        chart.projection is not alt.Undefined
-        and chart.projection.scale is not alt.Undefined
-    ):
-        scale = chart.projection.scale
+) -> alt.Chart:
+    # TODO: Instead of using alt.Projection we could also provide all arguments
+    # But maybe this pattern here makes it easy to reuse the projection of an
+    # existing chart with "create_tiles_chart(chart.projection, ...)"?
+    if projection.scale is not alt.Undefined:
+        scale = projection.scale
     else:
         # Need to figure out default value for scale for mercator projection.
         # 961 / math.tau does not work. Found here:
@@ -134,7 +126,7 @@ def add_basemap(
         )
     )
 
-    layered_chart = (tiles + chart).add_params(
+    tiles.add_params(
         p_base_tile_size,
         p_pr_scale,
         p_zoom_level,
@@ -149,15 +141,45 @@ def add_basemap(
         p_djj_floor,
         p_dy,
     )
-    return layered_chart
+    return tiles
 
 
-def _validate_chart(chart: alt.Chart) -> None:
-    if chart.projection is alt.Undefined or chart.projection.type != "mercator":
-        raise ValueError("Chart must have a Mercator projection.")
+def add_basemap(
+    chart: alt.Chart,
+    source: TileProvider = providers.OpenStreetMap.Mapnik,
+    zoom: Optional[int] = None,
+    grid_num_columns: int = 10,
+    grid_num_rows: int = 10,
+) -> alt.LayerChart:
+    if not isinstance(chart, alt.Chart):
+        raise TypeError("Only altair.Chart instances are supported.")
 
-    if chart.projection is alt.Undefined or chart.projection.scale is alt.Undefined:
-        raise ValueError("Chart must have a projection scale set.")
+    if zoom is not None and not isinstance(zoom, int):
+        raise TypeError("Zoom must be an integer or None.")
 
-    if chart.mark.type != "geoshape":
-        raise ValueError("Chart must have a geoshape mark.")
+    _validate_projection(chart.projection)
+    # Assert statement is for the benefit of mypy. We already know that
+    # chart.projection is not alt.Undefined because of _validate_projection.
+    assert chart.projection is not alt.Undefined
+
+    tiles = create_tiles_chart(
+        projection=chart.projection,
+        source=source,
+        zoom=zoom,
+        grid_num_columns=grid_num_columns,
+        grid_num_rows=grid_num_rows,
+    )
+    return tiles + chart
+
+
+def _validate_projection(projection: Union[alt.Projection, alt.Undefined]) -> None:
+    if projection is alt.Undefined:
+        raise ValueError(
+            "Projection must be defined and be of type Mercator and must have a scale."
+        )
+
+    if projection.type != "mercator":
+        raise ValueError("Projection must be of type Mercator.")
+
+    if projection.scale is alt.Undefined:
+        raise ValueError("Projection must have a scale.")
