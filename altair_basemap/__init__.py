@@ -1,5 +1,5 @@
 __version__ = "0.1.0dev"
-__all__ = ["add_basemap", "providers"]
+__all__ = ["add_tiles", "providers"]
 
 import math
 from typing import Optional, Union
@@ -144,7 +144,7 @@ def create_tiles_chart(
     return tiles
 
 
-def add_basemap(
+def add_tiles(
     chart: alt.Chart,
     source: TileProvider = providers.OpenStreetMap.Mapnik,
     zoom: Optional[int] = None,
