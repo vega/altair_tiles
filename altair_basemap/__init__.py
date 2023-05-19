@@ -2,7 +2,7 @@ __version__ = "0.1.0dev"
 __all__ = ["add_tiles", "providers"]
 
 import math
-from typing import Optional, Union
+from typing import Optional
 
 import altair as alt
 import xyzservices.providers as providers
@@ -32,10 +32,38 @@ def create_tiles_chart(
     zoom: Optional[int] = None,
     grid_num_columns: int = 10,
     grid_num_rows: int = 10,
+) -> alt.LayerChart:
+    # For the tiles to show up, we need to ensure that a Vega Projection is created
+    # which is used in the p_base_point parameter. This seems to only happen
+    # if we layer the tiles together with another geoshape chart which also
+    # has the projection attribute set.
+    base_layer = alt.Chart().mark_geoshape().properties(projection=projection)
+    tiles = _create_tiles_layer(
+        projection=projection,
+        source=source,
+        zoom=zoom,
+        grid_num_columns=grid_num_columns,
+        grid_num_rows=grid_num_rows,
+    )
+
+    # If we use tiles as the first layer then the chart is 20px by 20px by default.
+    # Unclear why but the other way around works fine.
+    return base_layer + tiles
+
+
+def _create_tiles_layer(
+    projection: alt.Projection,
+    source: TileProvider,
+    zoom: Optional[int],
+    grid_num_columns: int,
+    grid_num_rows: int,
 ) -> alt.Chart:
     # TODO: Instead of using alt.Projection we could also provide all arguments
     # But maybe this pattern here makes it easy to reuse the projection of an
     # existing chart with "create_tiles_chart(chart.projection, ...)"?
+
+    _validate_projection(projection)
+
     if projection.scale is not alt.Undefined:
         scale = projection.scale
     else:
@@ -108,7 +136,7 @@ def create_tiles_chart(
 
     tile_list = alt.sequence(0, grid_num_columns, as_="a", name="tile_list")
     tiles = (
-        alt.Chart(tile_list)
+        alt.Chart(tile_list, projection=projection)
         .mark_image(
             clip=True,
             # For some settings, the tiles would show a fine gap between them. By adding
@@ -126,7 +154,7 @@ def create_tiles_chart(
         )
     )
 
-    tiles.add_params(
+    tiles = tiles.add_params(
         p_base_tile_size,
         p_pr_scale,
         p_zoom_level,
@@ -157,12 +185,12 @@ def add_tiles(
     if zoom is not None and not isinstance(zoom, int):
         raise TypeError("Zoom must be an integer or None.")
 
-    _validate_projection(chart.projection)
-    # Assert statement is for the benefit of mypy. We already know that
-    # chart.projection is not alt.Undefined because of _validate_projection.
-    assert chart.projection is not alt.Undefined
+    if chart.projection is alt.Undefined:
+        raise ValueError(
+            "Projection must be defined and be of type Mercator and must have a scale."
+        )
 
-    tiles = create_tiles_chart(
+    tiles = _create_tiles_layer(
         projection=chart.projection,
         source=source,
         zoom=zoom,
@@ -172,12 +200,7 @@ def add_tiles(
     return tiles + chart
 
 
-def _validate_projection(projection: Union[alt.Projection, alt.Undefined]) -> None:
-    if projection is alt.Undefined:
-        raise ValueError(
-            "Projection must be defined and be of type Mercator and must have a scale."
-        )
-
+def _validate_projection(projection: alt.Projection) -> None:
     if projection.type != "mercator":
         raise ValueError("Projection must be of type Mercator.")
 
