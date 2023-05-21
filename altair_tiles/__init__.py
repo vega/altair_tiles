@@ -1,5 +1,5 @@
 __version__ = "0.1.0dev"
-__all__ = ["create_tiles_chart", "add_tiles", "providers"]
+__all__ = ["add_tiles", "add_attribution", "create_tiles_chart", "providers"]
 
 import math
 from typing import Optional, Union
@@ -24,6 +24,45 @@ from xyzservices import TileProvider
 # calculate the grid size using something like
 # grid_num_columns = ceil(width/p_tile_size +1)
 # grid_num_rows = ceil(height/p_tile_size +1)
+
+
+def add_tiles(
+    chart: alt.Chart,
+    source: TileProvider = providers.OpenStreetMap.Mapnik,
+    zoom: Optional[int] = None,
+    attribution: Union[str, bool] = True,
+    grid_num_columns: int = 10,
+    grid_num_rows: int = 10,
+) -> alt.LayerChart:
+    if not isinstance(chart, alt.Chart):
+        raise TypeError(
+            "Only altair.Chart instances are supported. If you want to add"
+            + " tiles to a layer chart, use create_tiles_chart."
+        )
+
+    if chart.projection is alt.Undefined:
+        raise ValueError(
+            "Projection must be defined and be of type Mercator and must have a scale."
+        )
+
+    tiles = create_tiles_chart(
+        projection=chart.projection,
+        source=source,
+        zoom=zoom,
+        # Set attribution to False here as we want to add it in the end so it is
+        # on top of the geoshape layer.
+        attribution=False,
+        standalone=False,
+        grid_num_columns=grid_num_columns,
+        grid_num_rows=grid_num_rows,
+    )
+
+    final_chart = tiles + chart
+    if attribution:
+        final_chart = add_attribution(
+            chart=final_chart, source=source, attribution=attribution
+        )
+    return final_chart
 
 
 def create_tiles_chart(
@@ -185,43 +224,6 @@ def _create_nonstandalone_tiles_chart(
     if attribution:
         tiles = add_attribution(tiles, source, attribution)
     return tiles
-
-
-def add_tiles(
-    chart: alt.Chart,
-    source: TileProvider = providers.OpenStreetMap.Mapnik,
-    zoom: Optional[int] = None,
-    attribution: Union[str, bool] = True,
-    grid_num_columns: int = 10,
-    grid_num_rows: int = 10,
-) -> alt.LayerChart:
-    if not isinstance(chart, alt.Chart):
-        raise TypeError(
-            "Only altair.Chart instances are supported. If you want to add"
-            + " tiles to a layer chart, use create_tiles_chart."
-        )
-
-    if chart.projection is alt.Undefined:
-        raise ValueError(
-            "Projection must be defined and be of type Mercator and must have a scale."
-        )
-
-    tiles = create_tiles_chart(
-        projection=chart.projection,
-        source=source,
-        zoom=zoom,
-        # Set attribution to False here as we want to add it in the end so it is
-        # on top of the geoshape layer.
-        attribution=False,
-        standalone=False,
-        grid_num_columns=grid_num_columns,
-        grid_num_rows=grid_num_rows,
-    )
-
-    final_chart = tiles + chart
-    if attribution:
-        final_chart = add_attribution(final_chart, source, attribution)
-    return final_chart
 
 
 def add_attribution(
