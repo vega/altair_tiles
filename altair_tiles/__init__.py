@@ -31,15 +31,18 @@ def create_tiles_chart(
     source: TileProvider = providers.OpenStreetMap.Mapnik,
     zoom: Optional[int] = None,
     attribution: Union[str, bool] = True,
+    standalone: bool = True,
     grid_num_columns: int = 10,
     grid_num_rows: int = 10,
-) -> alt.LayerChart:
+) -> Union[alt.LayerChart, alt.Chart]:
+    if zoom is not None and not isinstance(zoom, int):
+        raise TypeError("Zoom must be an integer or None.")
+
     # For the tiles to show up, we need to ensure that a Vega Projection is created
     # which is used in the p_base_point parameter. This seems to only happen
     # if we layer the tiles together with another geoshape chart which also
     # has the projection attribute set.
-    base_layer = alt.Chart().mark_geoshape().properties(projection=projection)
-    tiles = _create_tiles_chart(
+    tiles = _create_nonstandalone_tiles_chart(
         projection=projection,
         source=source,
         zoom=zoom,
@@ -48,12 +51,16 @@ def create_tiles_chart(
         grid_num_rows=grid_num_rows,
     )
 
-    # If we use tiles as the first layer then the chart is 20px by 20px by default.
-    # Unclear why but the other way around works fine.
-    return base_layer + tiles
+    if standalone:
+        base_layer = alt.Chart().mark_geoshape().properties(projection=projection)
+        # If we use tiles as the first layer then the chart is 20px by 20px by default.
+        # Unclear why but the other way around works fine.
+        return base_layer + tiles
+    else:
+        return tiles
 
 
-def _create_tiles_chart(
+def _create_nonstandalone_tiles_chart(
     projection: alt.Projection,
     source: TileProvider,
     zoom: Optional[int],
@@ -189,23 +196,24 @@ def add_tiles(
     grid_num_rows: int = 10,
 ) -> alt.LayerChart:
     if not isinstance(chart, alt.Chart):
-        raise TypeError("Only altair.Chart instances are supported.")
-
-    if zoom is not None and not isinstance(zoom, int):
-        raise TypeError("Zoom must be an integer or None.")
+        raise TypeError(
+            "Only altair.Chart instances are supported. If you want to add"
+            + " tiles to a layer chart, use create_tiles_chart."
+        )
 
     if chart.projection is alt.Undefined:
         raise ValueError(
             "Projection must be defined and be of type Mercator and must have a scale."
         )
 
-    tiles = _create_tiles_chart(
+    tiles = create_tiles_chart(
         projection=chart.projection,
         source=source,
         zoom=zoom,
         # Set attribution to False here as we want to add it in the end so it is
         # on top of the geoshape layer.
         attribution=False,
+        standalone=False,
         grid_num_columns=grid_num_columns,
         grid_num_rows=grid_num_rows,
     )
