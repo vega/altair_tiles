@@ -38,7 +38,7 @@ def create_tiles_chart(
     # if we layer the tiles together with another geoshape chart which also
     # has the projection attribute set.
     base_layer = alt.Chart().mark_geoshape().properties(projection=projection)
-    tiles = _create_tiles_layer(
+    tiles = _create_tiles_chart(
         projection=projection,
         source=source,
         zoom=zoom,
@@ -51,7 +51,7 @@ def create_tiles_chart(
     return base_layer + tiles
 
 
-def _create_tiles_layer(
+def _create_tiles_chart(
     projection: alt.Projection,
     source: TileProvider,
     zoom: Optional[int],
@@ -190,7 +190,7 @@ def add_tiles(
             "Projection must be defined and be of type Mercator and must have a scale."
         )
 
-    tiles = _create_tiles_layer(
+    tiles = _create_tiles_chart(
         projection=chart.projection,
         source=source,
         zoom=zoom,
