@@ -2,7 +2,7 @@ __version__ = "0.1.0dev"
 __all__ = ["create_tiles_chart", "add_tiles", "providers"]
 
 import math
-from typing import Optional
+from typing import Optional, Union
 
 import altair as alt
 import xyzservices.providers as providers
@@ -30,6 +30,7 @@ def create_tiles_chart(
     projection: alt.Projection,
     source: TileProvider = providers.OpenStreetMap.Mapnik,
     zoom: Optional[int] = None,
+    attribution: Union[str, bool] = True,
     grid_num_columns: int = 10,
     grid_num_rows: int = 10,
 ) -> alt.LayerChart:
@@ -42,6 +43,7 @@ def create_tiles_chart(
         projection=projection,
         source=source,
         zoom=zoom,
+        attribution=attribution,
         grid_num_columns=grid_num_columns,
         grid_num_rows=grid_num_rows,
     )
@@ -55,9 +57,10 @@ def _create_tiles_chart(
     projection: alt.Projection,
     source: TileProvider,
     zoom: Optional[int],
+    attribution: Union[str, bool],
     grid_num_columns: int,
     grid_num_rows: int,
-) -> alt.Chart:
+) -> Union[alt.Chart, alt.LayerChart]:
     # TODO: Instead of using alt.Projection we could also provide all arguments
     # But maybe this pattern here makes it easy to reuse the projection of an
     # existing chart with "create_tiles_chart(chart.projection, ...)"?
@@ -135,7 +138,9 @@ def _create_tiles_chart(
         )
 
     tile_list = alt.sequence(0, grid_num_columns, as_="a", name="tile_list")
-    tiles = (
+
+    # Can be a layerchart after adding attribution
+    tiles: Union[alt.Chart, alt.LayerChart] = (
         alt.Chart(tile_list, projection=projection)
         .mark_image(
             clip=True,
@@ -169,6 +174,9 @@ def _create_tiles_chart(
         p_djj_floor,
         p_dy,
     )
+
+    if attribution:
+        tiles = add_attribution(tiles, source, attribution)
     return tiles
 
 
@@ -176,6 +184,7 @@ def add_tiles(
     chart: alt.Chart,
     source: TileProvider = providers.OpenStreetMap.Mapnik,
     zoom: Optional[int] = None,
+    attribution: Union[str, bool] = True,
     grid_num_columns: int = 10,
     grid_num_rows: int = 10,
 ) -> alt.LayerChart:
@@ -194,10 +203,44 @@ def add_tiles(
         projection=chart.projection,
         source=source,
         zoom=zoom,
+        # Set attribution to False here as we want to add it in the end so it is
+        # on top of the geoshape layer.
+        attribution=False,
         grid_num_columns=grid_num_columns,
         grid_num_rows=grid_num_rows,
     )
-    return tiles + chart
+
+    final_chart = tiles + chart
+    if attribution:
+        final_chart = add_attribution(final_chart, source, attribution)
+    return final_chart
+
+
+def add_attribution(
+    chart: Union[alt.Chart, alt.LayerChart],
+    source: TileProvider = providers.OpenStreetMap.Mapnik,
+    attribution: Union[bool, str] = True,
+) -> Union[alt.Chart, alt.LayerChart]:
+    # Useful function if the attribution would be partially hidden by another layer.
+    # In that case, you can set attribution=False when creating the tiles chart
+    # and then use this function to add the attribution in the end to the final chart.
+    attribution_text: Optional[str]
+    if attribution:
+        attribution_text = (
+            attribution if isinstance(attribution, str) else source.get("attribution")
+        )
+    else:
+        attribution_text = None
+
+    if attribution_text:
+        text_attrib = (
+            alt.Chart()
+            .mark_text(text=attribution_text, dy=-8, dx=3, align="left")
+            .encode(x=alt.value(0), y=alt.value(alt.expr("height")))
+        )
+        chart = chart + text_attrib
+
+    return chart
 
 
 def _validate_projection(projection: alt.Projection) -> None:
