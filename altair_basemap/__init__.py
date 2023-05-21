@@ -1,5 +1,5 @@
 __version__ = "0.1.0dev"
-__all__ = ["add_tiles", "providers"]
+__all__ = ["create_tiles_chart", "add_tiles", "providers"]
 
 import math
 from typing import Optional
