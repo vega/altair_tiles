@@ -13,13 +13,13 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "altair_basemap"
-authors = [ {name = "altair_basemap contributors"} ]
+name = "altair_tiles"
+authors = [ {name = "altair_tiles contributors"} ]
 dependencies = [
     "altair",
     "xyzservices"
 ]
-description = "altair_basemap"
+description = "altair_tiles"
 readme = "README.md"
 keywords = [
     "altair",
@@ -40,7 +40,7 @@ classifiers= [
 ]
 
 [project.urls]
-Source = "https://github.com/binste/altair_basemap"
+Source = "https://github.com/binste/altair_tiles"
 
 [project.optional-dependencies]
 dev = [
@@ -57,13 +57,13 @@ dev = [
 ]
 
 [tool.hatch.version]
-path = "altair_basemap/__init__.py"
+path = "altair_tiles/__init__.py"
 
 [tool.hatch.metadata]
 allow-direct-references = true
 
 [tool.hatch.build]
-include = ["/altair_basemap"]
+include = ["/altair_tiles"]
 
 [tool.hatch.envs.default]
 features = ["dev"]
@@ -72,7 +72,7 @@ features = ["dev"]
 test = [
     "black --diff --color --check .",
     "ruff check .",
-    "mypy altair_basemap",
+    "mypy altair_tiles",
     # "python -m pytest tests"
 ]
 
