@@ -116,10 +116,13 @@ def _create_nonstandalone_tiles_chart(
     if projection.scale is not alt.Undefined:
         scale = projection.scale
     else:
-        # Need to figure out default value for scale for mercator projection.
-        # 961 / math.tau does not work. Found here:
+        # Found here:
         # https://github.com/d3/d3-geo/blob/main/src/projection/mercator.js#L13
-        raise NotImplementedError
+        # This value is projection specific and would need to be changed.
+        # Check below guards for the case were we support more projections in
+        # the future.
+        if projection.type != "mercator":
+            raise ValueError("Scale must be defined for non-Mercator projections.")
         scale = 961 / math.tau
     # Convert to string in case it is a Vega expression
     p_pr_scale = alt.param(expr=str(scale), name="pr_scale")
@@ -256,6 +259,3 @@ def add_attribution(
 def _validate_projection(projection: alt.Projection) -> None:
     if projection.type != "mercator":
         raise ValueError("Projection must be of type Mercator.")
-
-    if projection.scale is alt.Undefined:
-        raise ValueError("Projection must have a scale.")
