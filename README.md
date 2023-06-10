@@ -12,7 +12,7 @@ source .venv/bin/activate
 pip install -e '.[dev]'
 ```
 
-Run linters (and soon tests) with
+Run linters and tests with
 ```bash
 hatch run test
 ```
