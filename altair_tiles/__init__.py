@@ -22,13 +22,13 @@ from xyzservices import TileProvider
 # so there should be not much of a downside when using a large grid by default.
 # If we could access the size of the chart in the Python code, we could
 # calculate the grid size using something like
-# grid_num_columns = ceil(width/p_tile_size +1)  # noqa: ERA001
-# grid_num_rows = ceil(height/p_tile_size +1)  # noqa: ERA001
+# grid_num_columns = ceil(width/p_tile_size +2)  # noqa: ERA001
+# grid_num_rows = ceil(height/p_tile_size +2)  # noqa: ERA001
 
 
 def add_tiles(
     chart: alt.Chart,
-    source: Union[str, TileProvider] = providers.OpenStreetMap.Mapnik,
+    provider: Union[str, TileProvider] = providers.OpenStreetMap.Mapnik,
     zoom: Optional[int] = None,
     attribution: Union[str, bool] = True,
     grid_num_columns: int = 10,
@@ -47,7 +47,7 @@ def add_tiles(
 
     tiles = create_tiles_chart(
         projection=chart.projection,
-        source=source,
+        provider=provider,
         zoom=zoom,
         # Set attribution to False here as we want to add it in the end so it is
         # on top of the geoshape layer.
@@ -60,22 +60,22 @@ def add_tiles(
     final_chart = tiles + chart
     if attribution:
         final_chart = add_attribution(
-            chart=final_chart, source=source, attribution=attribution
+            chart=final_chart, provider=provider, attribution=attribution
         )
     return final_chart
 
 
 def create_tiles_chart(
     projection: alt.Projection,
-    source: Union[str, TileProvider] = providers.OpenStreetMap.Mapnik,
+    provider: Union[str, TileProvider] = providers.OpenStreetMap.Mapnik,
     zoom: Optional[int] = None,
     attribution: Union[str, bool] = True,
     standalone: bool = True,
     grid_num_columns: int = 10,
     grid_num_rows: int = 10,
 ) -> Union[alt.LayerChart, alt.Chart]:
-    if isinstance(source, str):
-        source = cast(TileProvider, providers.query_name(source))
+    if isinstance(provider, str):
+        provider = cast(TileProvider, providers.query_name(provider))
 
     if zoom is not None and not isinstance(zoom, int):
         raise TypeError("Zoom must be an integer or None.")
@@ -86,7 +86,7 @@ def create_tiles_chart(
     # has the projection attribute set.
     tiles = _create_nonstandalone_tiles_chart(
         projection=projection,
-        source=source,
+        provider=provider,
         zoom=zoom,
         attribution=attribution,
         grid_num_columns=grid_num_columns,
@@ -104,7 +104,7 @@ def create_tiles_chart(
 
 def _create_nonstandalone_tiles_chart(
     projection: alt.Projection,
-    source: TileProvider,
+    provider: TileProvider,
     zoom: Optional[int],
     attribution: Union[str, bool],
     grid_num_columns: int,
@@ -127,7 +127,8 @@ def _create_nonstandalone_tiles_chart(
         if projection.type != "mercator":
             raise ValueError("Scale must be defined for non-Mercator projections.")
         scale = 961 / math.tau
-    # Convert to string in case it is a Vega expression
+    # We use expr and not value below in case it is a Vega expression. expr always
+    # expects a string and therefore we use str to convert potential numeric values
     p_pr_scale = alt.param(expr=str(scale), name="pr_scale")
 
     if zoom is not None:
@@ -136,15 +137,28 @@ def _create_nonstandalone_tiles_chart(
             expr=f"(2 * PI * {p_pr_scale.name}) / pow(2, {p_zoom_level.name})",
             name="base_tile_size",
         )
+        _validate_zoom(math.ceil(zoom), provider=provider)
     else:
         # Calculate an appropriate zoom level based on the projection scale
         # and the tile size.
-        p_base_tile_size = alt.param(value=256, name="base_tile_size")
+        default_base_tile_size = 256
+        p_base_tile_size = alt.param(
+            value=default_base_tile_size, name="base_tile_size"
+        )
         p_zoom_level = alt.param(
             expr=f"log((2 * PI * {p_pr_scale.name}) / {p_base_tile_size.name}) /"
             + " log(2)",
             name="zoom_level",
         )
+        if isinstance(scale, float):
+            # In this case, we can also evaluate the zoom level and validate it.
+            # Else, it could be a Vega expression in which case we can't evaluate
+            # it here and therefore can't raise an error in case the zoom level
+            # would be too low or high.
+            evaluated_zoom_level = math.log(
+                (2 * math.pi * scale) / default_base_tile_size
+            ) / math.log(2)
+            _validate_zoom(math.ceil(evaluated_zoom_level), provider=provider)
 
     p_zoom_ceil = alt.param(expr=f"ceil({p_zoom_level.name})", name="zoom_ceil")
     p_tiles_count = alt.param(expr=f"pow(2, {p_zoom_ceil.name})", name="tiles_count")
@@ -199,14 +213,14 @@ def _create_nonstandalone_tiles_chart(
             clip=True,
             # For some settings, the tiles would show a fine gap between them. By adding
             # 1px to the height and width, we can avoid this.
-            height=alt.expr(p_tile_size.name + " + 1"),
-            width=alt.expr(p_tile_size.name + " + 1"),
+            height=alt.expr(p_tile_size.name + " - 2"),
+            width=alt.expr(p_tile_size.name + " - 2"),
         )
         .encode(alt.Url("url:N"), alt.X("x:Q").scale(None), alt.Y("y:Q").scale(None))
         .transform_calculate(b=f"sequence(0, {grid_num_rows})")
         .transform_flatten(["b"])
         .transform_calculate(
-            url=build_url(source, x=expr_url_x, y=expr_url_y, z=p_zoom_ceil.name),
+            url=build_url(provider, x=expr_url_x, y=expr_url_y, z=p_zoom_ceil.name),
             x=f"datum.a * {p_tile_size.name} + {p_dx.name} + ({p_tile_size.name} / 2)",
             y=f"datum.b * {p_tile_size.name} + {p_dy.name} + ({p_tile_size.name} / 2)",
         )
@@ -229,26 +243,47 @@ def _create_nonstandalone_tiles_chart(
     )
 
     if attribution:
-        tiles = add_attribution(tiles, source, attribution)
+        tiles = add_attribution(tiles, provider, attribution)
     return tiles
+
+
+def _validate_zoom(zoom: int, provider: TileProvider) -> None:
+    # Follows very closely the implementation in contextily.tile._validate_zoom
+    # https://github.com/geopandas/contextily/blob/0c8c9ce6d99f29e5fd250ee505f52a9bad30642b/contextily/tile.py#LL538C3-L538C3
+    min_zoom = provider.get("min_zoom", 0)
+    if "max_zoom" in provider:
+        max_zoom = provider.get("max_zoom")
+        max_zoom_known = True
+    else:
+        # 22 is known max in existing providers, taking some margin
+        max_zoom = 30
+        max_zoom_known = False
+
+    if not (min_zoom <= zoom <= max_zoom):
+        msg = f"The zoom level of {zoom} is not valid for the current tile provider"
+        if max_zoom_known:
+            msg += f" (valid zooms: {min_zoom} - {max_zoom})."
+        else:
+            msg += "."
+        raise ValueError(msg)
 
 
 def add_attribution(
     chart: Union[alt.Chart, alt.LayerChart],
-    source: Union[str, TileProvider] = providers.OpenStreetMap.Mapnik,
+    provider: Union[str, TileProvider] = providers.OpenStreetMap.Mapnik,
     attribution: Union[bool, str] = True,
 ) -> Union[alt.Chart, alt.LayerChart]:
     """Useful function if the attribution would be partially hidden by another layer.
     In that case, you can set attribution=False when creating the tiles chart
     and then use this function to add the attribution in the end to the final chart.
     """
-    if isinstance(source, str):
-        source = cast(TileProvider, providers.query_name(source))
+    if isinstance(provider, str):
+        provider = cast(TileProvider, providers.query_name(provider))
 
     attribution_text: Optional[str]
     if attribution:
         attribution_text = (
-            attribution if isinstance(attribution, str) else source.get("attribution")
+            attribution if isinstance(attribution, str) else provider.get("attribution")
         )
     else:
         attribution_text = None
