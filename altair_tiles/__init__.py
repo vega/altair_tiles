@@ -8,31 +8,12 @@ import altair as alt
 import xyzservices.providers as providers
 from xyzservices import TileProvider
 
-# Size of tile grid needs to be calculated in Python as it is not possible
-# yet to use an expression in a data generator such as a sequence.
-# See https://github.com/vega/vega-lite/issues/7410
-# The issue with this is that it depends on the size of the chart which
-# we cannot yet know at this point as it might be changed by e.g. a theme
-# or by the user themselves when working with the returned layered chart.
-# The default values for num_grid_columns and num_grid_rows are the same
-# to produce a quadratic grid which should be large
-# enough for most use cases. The user can use the input arguments
-# to overwrite this in case the default size is not large enough.
-# Tiles seem to be only fetched in a browser if they are visible and not clipped
-# so there should be not much of a downside when using a large grid by default.
-# If we could access the size of the chart in the Python code, we could
-# calculate the grid size using something like
-# grid_num_columns = ceil(width/p_tile_size +2)  # noqa: ERA001
-# grid_num_rows = ceil(height/p_tile_size +2)  # noqa: ERA001
-
 
 def add_tiles(
     chart: alt.Chart,
     provider: Union[str, TileProvider] = providers.OpenStreetMap.Mapnik,
     zoom: Optional[int] = None,
     attribution: Union[str, bool] = True,
-    grid_num_columns: int = 10,
-    grid_num_rows: int = 10,
 ) -> alt.LayerChart:
     if not isinstance(chart, alt.Chart):
         raise TypeError(
@@ -53,8 +34,6 @@ def add_tiles(
         # on top of the geoshape layer.
         attribution=False,
         standalone=False,
-        grid_num_columns=grid_num_columns,
-        grid_num_rows=grid_num_rows,
     )
 
     final_chart = tiles + chart
@@ -71,8 +50,6 @@ def create_tiles_chart(
     zoom: Optional[int] = None,
     attribution: Union[str, bool] = True,
     standalone: bool = True,
-    grid_num_columns: int = 10,
-    grid_num_rows: int = 10,
 ) -> Union[alt.LayerChart, alt.Chart]:
     if isinstance(provider, str):
         provider = cast(TileProvider, providers.query_name(provider))
@@ -89,8 +66,6 @@ def create_tiles_chart(
         provider=provider,
         zoom=zoom,
         attribution=attribution,
-        grid_num_columns=grid_num_columns,
-        grid_num_rows=grid_num_rows,
     )
 
     if standalone:
@@ -107,8 +82,6 @@ def _create_nonstandalone_tiles_chart(
     provider: TileProvider,
     zoom: Optional[int],
     attribution: Union[str, bool],
-    grid_num_columns: int,
-    grid_num_rows: int,
 ) -> Union[alt.Chart, alt.LayerChart]:
     # TODO: Instead of using alt.Projection we could also provide all arguments
     # But maybe this pattern here makes it easy to reuse the projection of an
@@ -131,13 +104,14 @@ def _create_nonstandalone_tiles_chart(
     # expects a string and therefore we use str to convert potential numeric values
     p_pr_scale = alt.param(expr=str(scale), name="pr_scale")
 
+    evaluated_zoom_level_ceil: Optional[int] = None
     if zoom is not None:
         p_zoom_level = alt.param(value=zoom, name="zoom_level")
         p_base_tile_size = alt.param(
             expr=f"(2 * PI * {p_pr_scale.name}) / pow(2, {p_zoom_level.name})",
             name="base_tile_size",
         )
-        _validate_zoom(math.ceil(zoom), provider=provider)
+        evaluated_zoom_level_ceil = math.ceil(zoom)
     else:
         # Calculate an appropriate zoom level based on the projection scale
         # and the tile size.
@@ -151,16 +125,22 @@ def _create_nonstandalone_tiles_chart(
             name="zoom_level",
         )
         if isinstance(scale, (float, int)):
-            # In this case, we can also evaluate the zoom level and validate it.
+            # In this case, we can also evaluate the zoom level.
             # Else, it could be a Vega expression in which case we can't evaluate
-            # it here and therefore can't raise an error in case the zoom level
-            # would be too low or high.
-            evaluated_zoom_level = math.log(
-                (2 * math.pi * scale) / default_base_tile_size
-            ) / math.log(2)
-            _validate_zoom(math.ceil(evaluated_zoom_level), provider=provider)
+            # it in Python.
+            evaluated_zoom_level_ceil = math.ceil(
+                math.log((2 * math.pi * scale) / default_base_tile_size) / math.log(2)
+            )
+
+    evaluated_tiles_count: Optional[int] = None
+    if evaluated_zoom_level_ceil is not None:
+        _validate_zoom(evaluated_zoom_level_ceil, provider=provider)
+        evaluated_tiles_count = 2**evaluated_zoom_level_ceil
 
     p_zoom_ceil = alt.param(expr=f"ceil({p_zoom_level.name})", name="zoom_ceil")
+    # Is this the number of tiles per column/row? Total number of tiles would then be
+    # this number squared? Does not account for tiles which will be clipped if chart has
+    # non-quadratic aspect ratio.
     p_tiles_count = alt.param(expr=f"pow(2, {p_zoom_ceil.name})", name="tiles_count")
     p_tile_size = alt.param(
         expr=p_base_tile_size.name
@@ -204,8 +184,22 @@ def _create_nonstandalone_tiles_chart(
             + "'"
         )
 
-    tile_list = alt.sequence(0, grid_num_columns, as_="a", name="tile_list")
+    # Size of tile grid needs to be calculated in Python as it is not possible
+    # yet to use an expression in a data generator such as a sequence.
+    # See https://github.com/vega/vega-lite/issues/7410
+    # The issue with this is that it depends on the size of the chart which
+    # we cannot yet know at this point as it might be changed by e.g. a theme
+    # or by the user themselves when working with the returned layered chart.
 
+    # Fallback value of 10 is arbitrary. Ideally, there would be a better heuristic
+    # but it's also only used if the scale is a Vega expression which should
+    # be rare. Adding 2 to the evaluated tiles is also arbitrary to make sure
+    # that we have enough tiles. This might not be necessary. We then remove
+    # the unnecessary tiles again in the transform_filter statement below which is
+    # needed anyway to remove the ones with negative indices.
+    grid_size = evaluated_tiles_count + 2 if evaluated_tiles_count is not None else 10
+
+    tile_list = alt.sequence(0, grid_size, as_="a", name="tile_list")
     # Can be a layerchart after adding attribution
     tiles: Union[alt.Chart, alt.LayerChart] = (
         alt.Chart(tile_list, projection=projection)
@@ -213,16 +207,32 @@ def _create_nonstandalone_tiles_chart(
             clip=True,
             # For some settings, the tiles would show a fine gap between them. By adding
             # 1px to the height and width, we can avoid this.
-            height=alt.expr(p_tile_size.name + " - 2"),
-            width=alt.expr(p_tile_size.name + " - 2"),
+            height=alt.expr(p_tile_size.name + " + 1"),
+            width=alt.expr(p_tile_size.name + " + 1"),
         )
         .encode(alt.Url("url:N"), alt.X("x:Q").scale(None), alt.Y("y:Q").scale(None))
-        .transform_calculate(b=f"sequence(0, {grid_num_rows})")
+        .transform_calculate(b=f"sequence(0, {grid_size})")
         .transform_flatten(["b"])
         .transform_calculate(
             url=build_url(provider, x=expr_url_x, y=expr_url_y, z=p_zoom_ceil.name),
             x=f"datum.a * {p_tile_size.name} + {p_dx.name} + ({p_tile_size.name} / 2)",
             y=f"datum.b * {p_tile_size.name} + {p_dy.name} + ({p_tile_size.name} / 2)",
+        )
+        .transform_filter(
+            # Remove tiles which are not valid. Else, they would lead to errors
+            # when Vega tries to load and render them.
+            expr_url_x
+            + " >= 0 && "
+            + expr_url_y
+            + " >= 0"
+            + " && "
+            + expr_url_x
+            + " <= "
+            + p_tiles_count.name
+            + " && "
+            + expr_url_y
+            + " <= "
+            + p_tiles_count.name
         )
     )
 
