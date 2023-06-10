@@ -93,7 +93,7 @@ exclude = '''
 '''
 
 [tool.ruff]
-target-version = "py310"
+target-version = "py37"
 line-length = 88
 select = [
     # flake8-bugbear
@@ -107,24 +107,38 @@ select = [
     # pyflakes
     "F",
     # flake8-tidy-imports
-    "TID"
+    "TID",
+    "I",
+    "C90",
+    "UP",
+    "YTT",
+    "S",
+    "BLE",
+    "A",
+    "T10",
+    "ISC",
+    "ICN",
+    "INP",
+    "PIE",
+    "T20",
+    "PT",
+    "RET501",
+    "RET502",
+    "RET503",
+    "SLF",
+    "SIM",
+    "TCH",
+    "ARG",
+    "PTH",
+    "ERA",
+    "PD",
+    "PGH",
+    "RUF"
 ]
 ignore = [
-    # E203, E266, W503 not yet supported by ruff,
-    # see https://github.com/charliermarsh/ruff/issues/2402
-    # Whitespace before ':'
-    # "E203",
-    # Too many leading '#' for block comment
-    # "E266",
-    # Line break occurred before a binary operator
-    # "W503",
-    # Line too long
-    "E501",
-    # Relative imports are banned
-    "TID252",
-    # zip() without an explicit strict= parameter set.
-    # python>=3.10 only
-    "B905"
+    # Rule prefers implicitly concatenated strings over explicitly.
+    # We prefer explicitly concatenated strings.
+    "ISC003"
 ]
 exclude = [
     ".git",
