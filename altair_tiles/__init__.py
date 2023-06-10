@@ -22,8 +22,8 @@ from xyzservices import TileProvider
 # so there should be not much of a downside when using a large grid by default.
 # If we could access the size of the chart in the Python code, we could
 # calculate the grid size using something like
-# grid_num_columns = ceil(width/p_tile_size +1)
-# grid_num_rows = ceil(height/p_tile_size +1)
+# grid_num_columns = ceil(width/p_tile_size +1)  # noqa: ERA001
+# grid_num_rows = ceil(height/p_tile_size +1)  # noqa: ERA001
 
 
 def add_tiles(
@@ -141,7 +141,8 @@ def _create_nonstandalone_tiles_chart(
         # and the tile size.
         p_base_tile_size = alt.param(value=256, name="base_tile_size")
         p_zoom_level = alt.param(
-            expr=f"log((2 * PI * {p_pr_scale.name}) / {p_base_tile_size.name}) / log(2)",
+            expr=f"log((2 * PI * {p_pr_scale.name}) / {p_base_tile_size.name}) /"
+            + " log(2)",
             name="zoom_level",
         )
 
