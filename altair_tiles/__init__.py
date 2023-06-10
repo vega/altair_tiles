@@ -2,7 +2,7 @@ __version__ = "0.1.0dev"
 __all__ = ["add_tiles", "add_attribution", "create_tiles_chart", "providers"]
 
 import math
-from typing import Optional, Union
+from typing import Optional, Union, cast
 
 import altair as alt
 import xyzservices.providers as providers
@@ -28,7 +28,7 @@ from xyzservices import TileProvider
 
 def add_tiles(
     chart: alt.Chart,
-    source: TileProvider = providers.OpenStreetMap.Mapnik,
+    source: Union[str, TileProvider] = providers.OpenStreetMap.Mapnik,
     zoom: Optional[int] = None,
     attribution: Union[str, bool] = True,
     grid_num_columns: int = 10,
@@ -67,13 +67,16 @@ def add_tiles(
 
 def create_tiles_chart(
     projection: alt.Projection,
-    source: TileProvider = providers.OpenStreetMap.Mapnik,
+    source: Union[str, TileProvider] = providers.OpenStreetMap.Mapnik,
     zoom: Optional[int] = None,
     attribution: Union[str, bool] = True,
     standalone: bool = True,
     grid_num_columns: int = 10,
     grid_num_rows: int = 10,
 ) -> Union[alt.LayerChart, alt.Chart]:
+    if isinstance(source, str):
+        source = cast(TileProvider, providers.query_name(source))
+
     if zoom is not None and not isinstance(zoom, int):
         raise TypeError("Zoom must be an integer or None.")
 
@@ -231,12 +234,16 @@ def _create_nonstandalone_tiles_chart(
 
 def add_attribution(
     chart: Union[alt.Chart, alt.LayerChart],
-    source: TileProvider = providers.OpenStreetMap.Mapnik,
+    source: Union[str, TileProvider] = providers.OpenStreetMap.Mapnik,
     attribution: Union[bool, str] = True,
 ) -> Union[alt.Chart, alt.LayerChart]:
-    # Useful function if the attribution would be partially hidden by another layer.
-    # In that case, you can set attribution=False when creating the tiles chart
-    # and then use this function to add the attribution in the end to the final chart.
+    """Useful function if the attribution would be partially hidden by another layer.
+    In that case, you can set attribution=False when creating the tiles chart
+    and then use this function to add the attribution in the end to the final chart.
+    """
+    if isinstance(source, str):
+        source = cast(TileProvider, providers.query_name(source))
+
     attribution_text: Optional[str]
     if attribution:
         attribution_text = (
