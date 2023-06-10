@@ -150,7 +150,7 @@ def _create_nonstandalone_tiles_chart(
             + " log(2)",
             name="zoom_level",
         )
-        if isinstance(scale, float):
+        if isinstance(scale, (float, int)):
             # In this case, we can also evaluate the zoom level and validate it.
             # Else, it could be a Vega expression in which case we can't evaluate
             # it here and therefore can't raise an error in case the zoom level
