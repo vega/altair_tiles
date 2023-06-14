@@ -16,3 +16,10 @@ Run linters and tests with
 ```bash
 hatch run test
 ```
+
+Build and view the documentation with
+```bash
+# Optional: hatch run doc:clean
+hatch run doc:build-html
+hatch run doc:serve
+```
