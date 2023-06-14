@@ -84,6 +84,13 @@ test = [
     "python -m pytest tests"
 ]
 
+[tool.hatch.envs.doc.scripts]
+clean = "rm -rf doc/_build"
+build-html = [
+    "jupyter-book build doc/"
+]
+serve = "(cd doc/_build/html && python -m http.server)"
+
 [tool.black]
 line-length = 88
 target-version = ["py37", "py38", "py39", "py310", "py311"]
