@@ -57,6 +57,10 @@ dev = [
     "mypy"
 ]
 
+doc = [
+    "jupyter-book"
+]
+
 [tool.hatch.version]
 path = "altair_tiles/__init__.py"
 
@@ -68,6 +72,9 @@ include = ["/altair_tiles"]
 
 [tool.hatch.envs.default]
 features = ["dev"]
+
+[tool.hatch.envs.doc]
+features = ["dev", "doc"]
 
 [tool.hatch.envs.default.scripts]
 test = [
