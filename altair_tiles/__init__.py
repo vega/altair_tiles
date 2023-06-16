@@ -24,12 +24,15 @@ def add_tiles(
         A chart with a geoshape mark and a Mercator projection.
     provider : Union[str, TileProvider], optional
         The provider of the tiles. You can access all available preconfigured providers
-        at `altair_tiles.providers` such as `altair_tiles.providers.OpenStreetMap.Mapnik`.
-        For convenience, you can also pass the name as a string, for example "OpenStreetMap.Mapnik" (this is the default).
+        at `altair_tiles.providers` such as
+        `altair_tiles.providers.OpenStreetMap.Mapnik`.
+        For convenience, you can also pass the name as a string,
+        for example "OpenStreetMap.Mapnik" (this is the default).
         You can pass a custom provider as a :class:`TileProvider` instance.
         This functionality is provided by the `xyzservices` package.
     zoom : Optional[int], optional
-        If None an appropriate zoom level will be calculated automatically, by default None
+        If None an appropriate zoom level will be calculated automatically,
+        by default None
     attribution : Union[str, bool], optional
         If True, the default attribution text for the provider, if available, is added
         to the chart. You can also provide a custom text as a string or disable
@@ -44,7 +47,8 @@ def add_tiles(
     TypeError
         If chart is not an altair.Chart instance.
     ValueError
-        If chart does not have a geoshape mark or a Mercator projection or no projection.
+        If chart does not have a geoshape mark or a Mercator projection
+        or no projection.
     """
     if not isinstance(chart, alt.Chart):
         raise TypeError(
@@ -100,12 +104,15 @@ def create_tiles_chart(
         _description_, by default "OpenStreetMap.Mapnik"
     provider : Union[str, TileProvider], optional
         The provider of the tiles. You can access all available preconfigured providers
-        at `altair_tiles.providers` such as `altair_tiles.providers.OpenStreetMap.Mapnik`.
-        For convenience, you can also pass the name as a string, for example "OpenStreetMap.Mapnik" (this is the default).
+        at `altair_tiles.providers` such as
+        `altair_tiles.providers.OpenStreetMap.Mapnik`.
+        For convenience, you can also pass the name as a string,
+        for example "OpenStreetMap.Mapnik" (this is the default).
         You can pass a custom provider as a :class:`TileProvider` instance.
         This functionality is provided by the `xyzservices` package.
     zoom : Optional[int], optional
-        If None an appropriate zoom level will be calculated automatically, by default None
+        If None an appropriate zoom level will be calculated automatically,
+        by default None
     attribution : Union[str, bool], optional
         If True, the default attribution text for the provider, if available, is added
         to the chart. You can also provide a custom text as a string or disable
@@ -339,7 +346,7 @@ def _create_nonstandalone_tiles_chart(
 
 def _validate_zoom(zoom: int, provider: TileProvider) -> None:
     # Follows very closely the implementation in contextily.tile._validate_zoom
-    # https://github.com/geopandas/contextily/blob/0c8c9ce6d99f29e5fd250ee505f52a9bad30642b/contextily/tile.py#LL538C3-L538C3
+    # https://github.com/geopandas/contextily/blob/0c8c9ce6d99f29e5fd250ee505f52a9bad30642b/contextily/tile.py#LL538C3-L538C3  # noqa: E501
     min_zoom = provider.get("min_zoom", 0)
     if "max_zoom" in provider:
         max_zoom = provider.get("max_zoom")
@@ -375,8 +382,10 @@ def add_attribution(
         A chart to which you want to have the attribution added.
     provider : Union[str, TileProvider], optional
         The provider of the tiles. You can access all available preconfigured providers
-        at `altair_tiles.providers` such as `altair_tiles.providers.OpenStreetMap.Mapnik`.
-        For convenience, you can also pass the name as a string, for example "OpenStreetMap.Mapnik" (this is the default).
+        at `altair_tiles.providers` such as
+        `altair_tiles.providers.OpenStreetMap.Mapnik`.
+        For convenience, you can also pass the name as a string, for example
+        "OpenStreetMap.Mapnik" (this is the default).
         You can pass a custom provider as a :class:`TileProvider` instance.
         This functionality is provided by the `xyzservices` package.
     attribution : Union[str, bool], optional
