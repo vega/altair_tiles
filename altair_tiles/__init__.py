@@ -243,6 +243,13 @@ def _create_nonstandalone_tiles_chart(
             + " <= "
             + f"({p_tiles_count.name} - 1)"
         )
+        .transform_filter(
+            # Remove some more tiles which would be outside of the chart. Some
+            # of these tiles might even be duplicated without this step as they
+            # woudl be placed again once we are 'around the world' but with x and y
+            # values which are far outside of the chart.
+            "datum.x < (width + tile_size / 2) && datum.y < (height + tile_size / 2)"
+        )
     )
 
     tiles = tiles.add_params(
