@@ -18,13 +18,19 @@ def add_tiles(
     if not isinstance(chart, alt.Chart):
         raise TypeError(
             "Only altair.Chart instances are supported. If you want to add"
-            + " tiles to a layer chart, use create_tiles_chart."
+            + " tiles to a layer chart, use create_tiles_chart to create the tiles"
+            + " and then add them as a normal layer to the existing layer chart."
         )
 
     if chart.projection is alt.Undefined:
-        raise ValueError(
-            "Projection must be defined and be of type Mercator and must have a scale."
-        )
+        raise ValueError("Projection must be defined and be of type Mercator.")
+
+    if (
+        chart.mark is alt.Undefined
+        or (isinstance(chart.mark, str) and chart.mark != "geoshape")
+        or (isinstance(chart.mark, alt.MarkDef) and chart.mark.type != "geoshape")
+    ):
+        raise ValueError("Chart must have a geoshape mark.")
 
     tiles = create_tiles_chart(
         projection=chart.projection,
