@@ -225,6 +225,10 @@ def _create_nonstandalone_tiles_chart(
         .transform_filter(
             # Remove tiles which are not valid. Else, they would lead to errors
             # when Vega tries to load and render them.
+            # This also removes tiles which are not needed for the current
+            # size of the chart. Vega does not seem to load images anyway
+            # which are not visible but this might still be useful to avoid
+            # unnecessary requests.
             expr_url_x
             + " >= 0 && "
             + expr_url_y
