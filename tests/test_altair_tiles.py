@@ -1,4 +1,6 @@
 # ruff: noqa: SLF001
+from typing import Union
+
 import altair as alt
 import pytest
 
@@ -76,7 +78,9 @@ def test_resolve_provider():
         (til.providers.OpenStreetMap.Mapnik, True),
     ],
 )
-def test_add_attribution_with_attribution(provider, attribution):
+def test_add_attribution_with_attribution(
+    provider: Union[str, til.TileProvider], attribution: Union[str, bool]
+):
     chart = alt.Chart()
     expected_attribution = (
         attribution
@@ -104,7 +108,7 @@ def test_add_attribution_with_attribution(provider, attribution):
         til.providers.OpenStreetMap.Mapnik,
     ],
 )
-def test_add_attribution_without_attribution(provider):
+def test_add_attribution_without_attribution(provider: Union[str, til.TileProvider]):
     chart = alt.Chart()
 
     chart_with_att = til.add_attribution(chart, provider=provider, attribution=False)
@@ -126,7 +130,10 @@ def _validate_image_layer(image_layer: alt.Chart):
 class TestCreateTilesChart:
     def test_raise_if_invalid_zoom_type(self):
         with pytest.raises(TypeError, match="Zoom must be an integer or None"):
-            til.create_tiles_chart(projection=alt.Projection(type="mercator"), zoom="1")
+            til.create_tiles_chart(
+                projection=alt.Projection(type="mercator"),
+                zoom="1",  # type: ignore[arg-type]
+            )
 
     def test_create_tiles_chart(self):
         chart = til.create_tiles_chart(projection=alt.Projection(type="mercator"))
