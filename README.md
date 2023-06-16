@@ -1,5 +1,5 @@
-# altair_tiles
-# altair-tiles <img align="right" src="https://raw.githubusercontent.com/altair-viz/altair_tiles/main/doc/logo.svg" height="50"></img>
+<img src="https://raw.githubusercontent.com/altair-viz/altair_tiles/main/doc/logo.svg" height="110"></img>
+
 This package is in an **early development stage**. You should expect things to break unannounced until we release a version `1.0.0`.
 
 You can use altair_tiles to add tiles from any xyz tile provider to your Altair chart. The goal is to build a counterpart to the amazing [contextily](https://github.com/geopandas/contextily) package which provides this functionality for [matplotlib](https://matplotlib.org/).
