@@ -236,11 +236,19 @@ def _create_nonstandalone_tiles_chart(
             + " && "
             + expr_url_x
             + " <= "
-            + p_tiles_count.name
+            # We need to subtract 1 from the tiles count as the tile indices start at 0
+            + f"({p_tiles_count.name} - 1)"
             + " && "
             + expr_url_y
             + " <= "
-            + p_tiles_count.name
+            + f"({p_tiles_count.name} - 1)"
+        )
+        .transform_filter(
+            # Remove some more tiles which would be outside of the chart. Some
+            # of these tiles might even be duplicated without this step as they
+            # woudl be placed again once we are 'around the world' but with x and y
+            # values which are far outside of the chart.
+            "datum.x < (width + tile_size / 2) && datum.y < (height + tile_size / 2)"
         )
     )
 
