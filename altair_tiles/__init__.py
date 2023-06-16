@@ -236,11 +236,12 @@ def _create_nonstandalone_tiles_chart(
             + " && "
             + expr_url_x
             + " <= "
-            + p_tiles_count.name
+            # We need to subtract 1 from the tiles count as the tile indices start at 0
+            + f"({p_tiles_count.name} - 1)"
             + " && "
             + expr_url_y
             + " <= "
-            + p_tiles_count.name
+            + f"({p_tiles_count.name} - 1)"
         )
     )
 
