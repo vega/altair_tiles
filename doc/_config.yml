@@ -3,6 +3,7 @@
 
 title: Altair Tiles
 author: Altair Tiles Developers
+logo: logo.svg
 
 # Force re-execution of notebooks on each build.
 # See https://jupyterbook.org/content/execute.html

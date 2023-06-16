@@ -8,6 +8,7 @@ __pycache__
 doc/_build
 !doc/**/*.ipynb
 !doc/**/*.svg
+!generate_logo.ipynb
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
