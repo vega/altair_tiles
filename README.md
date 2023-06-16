@@ -25,11 +25,11 @@ hatch run test
 Build and view the documentation with
 ```bash
 hatch run doc:clean
-hatch run doc:build-html
+hatch run doc:build
 hatch run doc:serve
 ```
 
-Publish with
+To run a clean build and publish, run
 ```bash
-hatch run doc:publish
+hatch run doc:build-and-publish
 ```
