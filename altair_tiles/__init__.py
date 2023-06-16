@@ -11,20 +11,26 @@ from xyzservices import TileProvider
 
 def add_tiles(
     chart: alt.Chart,
-    provider: Union[str, TileProvider] = providers.OpenStreetMap.Mapnik,
+    provider: Union[str, TileProvider] = "OpenStreetMap.Mapnik",
     zoom: Optional[int] = None,
     attribution: Union[str, bool] = True,
 ) -> alt.LayerChart:
     if not isinstance(chart, alt.Chart):
         raise TypeError(
             "Only altair.Chart instances are supported. If you want to add"
-            + " tiles to a layer chart, use create_tiles_chart."
+            + " tiles to a layer chart, use create_tiles_chart to create the tiles"
+            + " and then add them as a normal layer to the existing layer chart."
         )
 
     if chart.projection is alt.Undefined:
-        raise ValueError(
-            "Projection must be defined and be of type Mercator and must have a scale."
-        )
+        raise ValueError("Projection must be defined and be of type Mercator.")
+
+    if (
+        chart.mark is alt.Undefined
+        or (isinstance(chart.mark, str) and chart.mark != "geoshape")
+        or (isinstance(chart.mark, alt.MarkDef) and chart.mark.type != "geoshape")
+    ):
+        raise ValueError("Chart must have a geoshape mark.")
 
     tiles = create_tiles_chart(
         projection=chart.projection,
@@ -46,13 +52,12 @@ def add_tiles(
 
 def create_tiles_chart(
     projection: alt.Projection,
-    provider: Union[str, TileProvider] = providers.OpenStreetMap.Mapnik,
+    provider: Union[str, TileProvider] = "OpenStreetMap.Mapnik",
     zoom: Optional[int] = None,
     attribution: Union[str, bool] = True,
     standalone: bool = True,
 ) -> Union[alt.LayerChart, alt.Chart]:
-    if isinstance(provider, str):
-        provider = cast(TileProvider, providers.query_name(provider))
+    provider = _resolve_provider(provider)
 
     if zoom is not None and not isinstance(zoom, int):
         raise TypeError("Zoom must be an integer or None.")
@@ -279,15 +284,14 @@ def _validate_zoom(zoom: int, provider: TileProvider) -> None:
 
 def add_attribution(
     chart: Union[alt.Chart, alt.LayerChart],
-    provider: Union[str, TileProvider] = providers.OpenStreetMap.Mapnik,
+    provider: Union[str, TileProvider] = "OpenStreetMap.Mapnik",
     attribution: Union[bool, str] = True,
 ) -> Union[alt.Chart, alt.LayerChart]:
     """Useful function if the attribution would be partially hidden by another layer.
     In that case, you can set attribution=False when creating the tiles chart
     and then use this function to add the attribution in the end to the final chart.
     """
-    if isinstance(provider, str):
-        provider = cast(TileProvider, providers.query_name(provider))
+    provider = _resolve_provider(provider)
 
     attribution_text: Optional[str]
     if attribution:
@@ -308,6 +312,12 @@ def add_attribution(
     return chart
 
 
+def _resolve_provider(provider: Union[str, TileProvider]) -> TileProvider:
+    if isinstance(provider, str):
+        provider = cast(TileProvider, providers.query_name(provider))
+    return provider
+
+
 def _validate_projection(projection: alt.Projection) -> None:
     if projection.type != "mercator":
-        raise ValueError("Projection must be of type Mercator.")
+        raise ValueError("Projection must be of type 'mercator'.")
