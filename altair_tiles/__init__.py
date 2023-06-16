@@ -88,6 +88,47 @@ def create_tiles_chart(
     attribution: Union[str, bool] = True,
     standalone: bool = True,
 ) -> Union[alt.LayerChart, alt.Chart]:
+    """Creates an Altair chart with tiles.
+
+    Parameters
+    ----------
+    projection : alt.Projection
+        The projection of the chart. It must at least specify the type of the projection
+        which must be scale, e.g. `alt.Projection(type="mercator")`. If you already
+        have a chart, you can pass the projection of the chart, e.g. `chart.projection`.
+    provider : Union[str, TileProvider], optional
+        _description_, by default "OpenStreetMap.Mapnik"
+    provider : Union[str, TileProvider], optional
+        The provider of the tiles. You can access all available preconfigured providers
+        at `altair_tiles.providers` such as `altair_tiles.providers.OpenStreetMap.Mapnik`.
+        For convenience, you can also pass the name as a string, for example "OpenStreetMap.Mapnik" (this is the default).
+        You can pass a custom provider as a :class:`TileProvider` instance.
+        This functionality is provided by the `xyzservices` package.
+    zoom : Optional[int], optional
+        If None an appropriate zoom level will be calculated automatically, by default None
+    attribution : Union[str, bool], optional
+        If True, the default attribution text for the provider, if available, is added
+        to the chart. You can also provide a custom text as a string or disable
+        the attribution text by setting this to False. By default True
+    standalone : bool, optional
+        If True, the chart will be returned as a chart which can be rendered standalone.
+        It has an additional layer with a geoshape mark and the projection set. This is
+        required for the tiles to properly show up. If False, the chart will be returned
+        in a form where it can be added to an existing chart with a geoshape
+        mark. You culd also add a standalone chart to an existing chart
+        but the resulting specification is slightly simpler if you choose standalone.
+        Defaults to True.
+
+
+    Returns
+    -------
+    Union[alt.LayerChart, alt.Chart]
+
+    Raises
+    ------
+    TypeError
+        If zoom is not an integer or None.
+    """
     provider = _resolve_provider(provider)
 
     if zoom is not None and not isinstance(zoom, int):
@@ -322,9 +363,30 @@ def add_attribution(
     provider: Union[str, TileProvider] = "OpenStreetMap.Mapnik",
     attribution: Union[bool, str] = True,
 ) -> Union[alt.Chart, alt.LayerChart]:
-    """Useful function if the attribution would be partially hidden by another layer.
-    In that case, you can set attribution=False when creating the tiles chart
+    """This function is useful if the attribution added by add_tiles or
+    create_tiles_chart would be partially hidden by another layer. In that case,
+    you can set `attribution=False` when creating the tiles chart
     and then use this function to add the attribution in the end to the final chart.
+    See the documentation for examples
+
+    Parameters
+    ----------
+    chart : Union[alt.Chart, alt.LayerChart]
+        A chart to which you want to have the attribution added.
+    provider : Union[str, TileProvider], optional
+        The provider of the tiles. You can access all available preconfigured providers
+        at `altair_tiles.providers` such as `altair_tiles.providers.OpenStreetMap.Mapnik`.
+        For convenience, you can also pass the name as a string, for example "OpenStreetMap.Mapnik" (this is the default).
+        You can pass a custom provider as a :class:`TileProvider` instance.
+        This functionality is provided by the `xyzservices` package.
+    attribution : Union[str, bool], optional
+        If True, the default attribution text for the provider, if available, is added
+        to the chart. You can also provide a custom text as a string or disable
+        the attribution text by setting this to False. By default True
+
+    Returns
+    -------
+    Union[alt.Chart, alt.LayerChart]
     """
     provider = _resolve_provider(provider)
 
