@@ -26,3 +26,6 @@ sphinx:
   - 'sphinx.ext.autodoc'
   - 'sphinx.ext.napoleon'
   - 'sphinx.ext.viewcode'
+  config:
+    napoleon_numpy_docstring: true
+    napoleon_google_docstring: false
