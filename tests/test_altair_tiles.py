@@ -1,3 +1,4 @@
+# ruff: noqa: SLF001
 import altair as alt
 import pytest
 
@@ -37,3 +38,24 @@ def test_raise_if_invalid_zoom_level():
             projection=alt.Projection(type="mercator", scale=200_000_000),
             provider=provider,
         )
+
+
+def test_validate_projection():
+    # Test valid projection
+    projection = alt.Projection(type="mercator")
+    til._validate_projection(projection)
+
+    # Test invalid projection
+    projection = alt.Projection(type="albersUsa")
+    with pytest.raises(ValueError, match="Projection must be of type 'mercator'."):
+        til._validate_projection(projection)
+
+
+def test_resolve_provider():
+    # Test with string provider
+    provider_name = "OpenStreetMap.Mapnik"
+    til._resolve_provider(provider_name) == til.providers.OpenStreetMap.Mapnik
+
+    # Test with TileProvider object
+    provider_obj = TileProvider()
+    assert _resolve_provider(provider_obj) == provider_obj
