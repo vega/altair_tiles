@@ -53,7 +53,14 @@ dev = [
     "geopandas",
     "vega_datasets",
     "vl-convert-python",
-    "mypy"
+    "mypy",
+    "ghp-import",
+]
+
+doc = [
+    "jupyter-book",
+    # We need vl-convert-python to build the docs which use the png renderer
+    "vl-convert-python"
 ]
 
 [tool.hatch.version]
@@ -68,6 +75,9 @@ include = ["/altair_tiles"]
 [tool.hatch.envs.default]
 features = ["dev"]
 
+[tool.hatch.envs.doc]
+features = ["dev", "doc"]
+
 [tool.hatch.envs.default.scripts]
 test = [
     "black --diff --color --check .",
@@ -75,6 +85,14 @@ test = [
     "mypy altair_tiles tests",
     "python -m pytest tests"
 ]
+
+[tool.hatch.envs.doc.scripts]
+clean = "rm -rf doc/_build"
+build-html = [
+    "jupyter-book build doc/"
+]
+serve = "(cd doc/_build/html && python -m http.server)"
+publish = "ghp-import -n -p -f -o doc/_build/html"
 
 [tool.black]
 line-length = 88

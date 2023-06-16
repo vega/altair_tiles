@@ -88,10 +88,9 @@ def _create_nonstandalone_tiles_chart(
     zoom: Optional[int],
     attribution: Union[str, bool],
 ) -> Union[alt.Chart, alt.LayerChart]:
-    # TODO: Instead of using alt.Projection we could also provide all arguments
-    # But maybe this pattern here makes it easy to reuse the projection of an
-    # existing chart with "create_tiles_chart(chart.projection, ...)"?
-
+    # The calculations below are based on initial implementations in Vega
+    # https://github.com/vega/vega/issues/1212#issuecomment-384680678 and in Vega-Lite
+    # https://github.com/vega/vega-lite/issues/5758#issuecomment-1462683219.
     _validate_projection(projection)
 
     if projection.scale is not alt.Undefined:
