@@ -59,7 +59,9 @@ dev = [
 ]
 
 doc = [
-    "jupyter-book"
+    "jupyter-book",
+    # We need vl-convert-python to build the docs which use the png renderer
+    "vl-convert-python"
 ]
 
 [tool.hatch.version]
