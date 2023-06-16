@@ -54,7 +54,8 @@ dev = [
     "geopandas",
     "vega_datasets",
     "vl-convert-python",
-    "mypy"
+    "mypy",
+    "ghp-import",
 ]
 
 doc = [
@@ -90,6 +91,7 @@ build-html = [
     "jupyter-book build doc/"
 ]
 serve = "(cd doc/_build/html && python -m http.server)"
+publish = "ghp-import -n -p -f -o doc/_build/html"
 
 [tool.black]
 line-length = 88
