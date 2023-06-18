@@ -188,6 +188,7 @@ module = [
     "vl_convert.*",
     "altair",
     "xyzservices.*",
+    "mercantile.*"
 ]
 ignore_missing_imports = true
 
