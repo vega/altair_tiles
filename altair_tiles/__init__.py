@@ -174,6 +174,8 @@ def _create_nonstandalone_tiles_chart(
 
     if projection.scale is not alt.Undefined:
         scale = projection.scale
+        if isinstance(scale, alt.Parameter):
+            scale = scale.name
     else:
         # Found here:
         # https://github.com/d3/d3-geo/blob/main/src/projection/mercator.js#L13
