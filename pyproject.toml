@@ -17,7 +17,8 @@ name = "altair_tiles"
 authors = [ {name = "altair_tiles contributors"} ]
 dependencies = [
     "altair",
-    "xyzservices"
+    "xyzservices",
+    "mercantile",
 ]
 description = "altair_tiles"
 readme = "README.md"
@@ -187,6 +188,7 @@ module = [
     "vl_convert.*",
     "altair",
     "xyzservices.*",
+    "mercantile.*"
 ]
 ignore_missing_imports = true
 
