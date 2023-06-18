@@ -2,6 +2,7 @@ __version__ = "0.1.0dev"
 __all__ = ["add_tiles", "add_attribution", "create_tiles_chart", "providers"]
 
 import math
+from dataclasses import dataclass
 from typing import Optional, Union, cast
 
 import altair as alt
@@ -290,7 +291,7 @@ def _create_nonstandalone_tiles_chart(
 
     tile_list = alt.sequence(0, grid_size, as_="a", name="tile_list")
     # Can be a layerchart after adding attribution
-    tiles: Union[alt.Chart, alt.LayerChart] = (
+    tiles = (
         alt.Chart(tile_list, projection=projection)
         .mark_image(
             clip=True,
@@ -307,35 +308,64 @@ def _create_nonstandalone_tiles_chart(
             x=f"datum.a * {p_tile_size.name} + {p_dx.name} + ({p_tile_size.name} / 2)",
             y=f"datum.b * {p_tile_size.name} + {p_dy.name} + ({p_tile_size.name} / 2)",
         )
-        .transform_filter(
-            # Remove tiles which are not valid. Else, they would lead to errors
-            # when Vega tries to load and render them.
-            # This also removes tiles which are not needed for the current
-            # size of the chart. Vega does not seem to load images anyway
-            # which are not visible but this might still be useful to avoid
-            # unnecessary requests.
-            expr_url_x
-            + " >= 0 && "
-            + expr_url_y
-            + " >= 0"
-            + " && "
-            + expr_url_x
-            + " <= "
-            # We need to subtract 1 from the tiles count as the tile indices start at 0
-            + f"({p_one_side_tiles_count.name} - 1)"
-            + " && "
-            + expr_url_y
-            + " <= "
-            + f"({p_one_side_tiles_count.name} - 1)"
-        )
-        .transform_filter(
-            # Remove some more tiles which would be outside of the chart. Some
-            # of these tiles might even be duplicated without this step as they
-            # woudl be placed again once we are 'around the world' but with x and y
-            # values which are far outside of the chart.
-            "datum.x < (width + tile_size / 2) && datum.y < (height + tile_size / 2)"
-        )
     )
+
+    # Remove tiles which would be outside of the chart. Some
+    # of these tiles might even be duplicated without this step as they
+    # would be placed again once we are 'around the world' but with x and y
+    # values which are far outside of the chart. This also greatly speeds up the
+    # rendering time of a chart and the time it takes to save it with
+    # e.g. vl-convert-python as even if the tiles would not be visible in the chart,
+    # they would still be downloaded.
+    # x and y below refer to the x and y coordinates on the chart, not the x and y
+    # in the tile urls.
+    tiles = tiles.transform_filter(
+        "datum.x < (width + tile_size / 2) && datum.y < (height + tile_size / 2)"
+    )
+
+    # Remove tile urls which are not valid for the given provider. Else, they would
+    # lead to errors when Vega tries to load and render them.
+    provider_bounds = getattr(provider, "bounds", None)
+    if provider_bounds is None:
+        # Provider does not provide bounds, so we assume that they cover the whole
+        # earth surface. We therefore only apply some simple heuristics to remove
+        # invalid URLs
+
+        # Min values: Only positive x and y values in URL as
+        # tiles never have negative values
+        # Max values: Only load as many tiles as we expect given p_one_side_tiles_count.
+        # This again helps with speed but also avoids invalid tile urls
+        # with x and y values which would be too large.
+        # We need to subtract 1 from the tiles count as the tile indices start at 0
+        tiles = _transform_filter_url_x_y_bounds(
+            chart=tiles,
+            x_min=0,
+            y_min=0,
+            x_max=f"({p_one_side_tiles_count.name} - 1)",
+            y_max=f"({p_one_side_tiles_count.name} - 1)",
+            expr_url_x=expr_url_x,
+            expr_url_y=expr_url_y,
+        )
+    else:
+        # Provider does provide bounds for which they provide tiles. This can happen
+        # e.g. for providers which focus on a specific region or country.
+        if evaluated_zoom_level_ceil is None:
+            raise ValueError(
+                "The provider only provides tiles for bounds. This currently only"
+                + " works if you provide a fixed zoom level."
+            )
+        x_y_min_max = _bounds_to_x_y_min_max(
+            bounds=provider_bounds, zoom=evaluated_zoom_level_ceil
+        )
+        tiles = _transform_filter_url_x_y_bounds(
+            chart=tiles,
+            x_min=x_y_min_max.x_min,
+            y_min=x_y_min_max.y_min,
+            x_max=x_y_min_max.x_max,
+            y_max=x_y_min_max.y_max,
+            expr_url_x=expr_url_x,
+            expr_url_y=expr_url_y,
+        )
 
     tiles = tiles.add_params(
         p_base_tile_size,
@@ -353,9 +383,61 @@ def _create_nonstandalone_tiles_chart(
         p_dy,
     )
 
+    tiles_final: Union[alt.Chart, alt.LayerChart]
     if attribution:
-        tiles = add_attribution(tiles, provider, attribution)
-    return tiles
+        tiles_final = add_attribution(tiles, provider, attribution)
+    else:
+        tiles_final = tiles
+    return tiles_final
+
+
+@dataclass
+class _XYMinMax:
+    x_min: int
+    y_min: int
+    x_max: int
+    y_max: int
+
+
+def _bounds_to_x_y_min_max(bounds: list[list[float]], zoom: int) -> _XYMinMax:
+    south_west, north_east = bounds
+    south, west = south_west
+    north, east = north_east
+    valid_tiles = list(
+        mt.tiles(west=west, south=south, east=east, north=north, zooms=[zoom])
+    )
+    x_min = min(tile.x for tile in valid_tiles)
+    x_max = max(tile.x for tile in valid_tiles)
+    y_min = min(tile.y for tile in valid_tiles)
+    y_max = max(tile.y for tile in valid_tiles)
+    return _XYMinMax(x_min=x_min, y_min=y_min, x_max=x_max, y_max=y_max)
+
+
+def _transform_filter_url_x_y_bounds(
+    chart: alt.Chart,
+    x_min: Union[str, int],
+    x_max: Union[str, int],
+    y_min: Union[str, int],
+    y_max: Union[str, int],
+    expr_url_x: str,
+    expr_url_y: str,
+) -> str:
+    chart = chart.transform_filter(
+        # Lower bounds
+        expr_url_x
+        + f" >= {x_min} && "
+        + expr_url_y
+        + f" >= {y_min}"
+        + " && "
+        + expr_url_x
+        + " <= "
+        + str(x_max)
+        + " && "
+        + expr_url_y
+        + " <= "
+        + str(y_max)
+    )
+    return chart
 
 
 def _validate_zoom(zoom: int, provider: TileProvider) -> None:
