@@ -5,6 +5,7 @@ import math
 from typing import Optional, Union, cast
 
 import altair as alt
+import mercantile as mt
 import xyzservices.providers as providers
 from xyzservices import TileProvider
 
@@ -223,10 +224,12 @@ def _create_nonstandalone_tiles_chart(
         evaluated_tiles_count = 2**evaluated_zoom_level_ceil
 
     p_zoom_ceil = alt.param(expr=f"ceil({p_zoom_level.name})", name="zoom_ceil")
-    # Is this the number of tiles per column/row? Total number of tiles would then be
-    # this number squared? Does not account for tiles which will be clipped if chart has
-    # non-quadratic aspect ratio.
-    p_tiles_count = alt.param(expr=f"pow(2, {p_zoom_ceil.name})", name="tiles_count")
+    # Number of tiles per column/row, whichever is larger. Total number of tiles
+    # would then be this number squared although it does not account for tiles
+    # which will be clipped if chart has non-quadratic aspect ratio.
+    p_one_side_tiles_count = alt.param(
+        expr=f"pow(2, {p_zoom_ceil.name})", name="tiles_count"
+    )
     p_tile_size = alt.param(
         expr=p_base_tile_size.name
         + f" * pow(2, {p_zoom_level.name} - {p_zoom_ceil.name})",
@@ -234,7 +237,8 @@ def _create_nonstandalone_tiles_chart(
     )
     p_base_point = alt.param(expr="invert('projection', [0, 0])", name="base_point")
     p_dii = alt.param(
-        expr=f"({p_base_point.name}[0] + 180) / 360 * {p_tiles_count.name}", name="dii"
+        expr=f"({p_base_point.name}[0] + 180) / 360 * {p_one_side_tiles_count.name}",
+        name="dii",
     )
     p_dii_floor = alt.param(expr=f"floor({p_dii.name})", name="dii_floor")
     p_dx = alt.param(
@@ -243,7 +247,7 @@ def _create_nonstandalone_tiles_chart(
     p_djj = alt.param(
         expr=f"(1 - log(tan({p_base_point.name}[1] * PI / 180)"
         + f" + 1 / cos({p_base_point.name}[1] * PI / 180)) / PI)"
-        + f" / 2 * {p_tiles_count.name}",
+        + f" / 2 * {p_one_side_tiles_count.name}",
         name="djj",
     )
     p_djj_floor = alt.param(expr=f"floor({p_djj.name})", name="djj_floor")
@@ -252,8 +256,8 @@ def _create_nonstandalone_tiles_chart(
         name="dy",
     )
     expr_url_x = (
-        f"((datum.a + {p_dii_floor.name} + {p_tiles_count.name})"
-        + f" % {p_tiles_count.name})"
+        f"((datum.a + {p_dii_floor.name} + {p_one_side_tiles_count.name})"
+        + f" % {p_one_side_tiles_count.name})"
     )
     expr_url_y = f"(datum.b + {p_djj_floor.name})"
 
@@ -318,11 +322,11 @@ def _create_nonstandalone_tiles_chart(
             + expr_url_x
             + " <= "
             # We need to subtract 1 from the tiles count as the tile indices start at 0
-            + f"({p_tiles_count.name} - 1)"
+            + f"({p_one_side_tiles_count.name} - 1)"
             + " && "
             + expr_url_y
             + " <= "
-            + f"({p_tiles_count.name} - 1)"
+            + f"({p_one_side_tiles_count.name} - 1)"
         )
         .transform_filter(
             # Remove some more tiles which would be outside of the chart. Some
@@ -338,7 +342,7 @@ def _create_nonstandalone_tiles_chart(
         p_pr_scale,
         p_zoom_level,
         p_zoom_ceil,
-        p_tiles_count,
+        p_one_side_tiles_count,
         p_tile_size,
         p_base_point,
         p_dii,
