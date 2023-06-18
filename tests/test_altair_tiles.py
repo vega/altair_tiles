@@ -3,6 +3,7 @@ from typing import Union
 
 import altair as alt
 import pytest
+from vega_datasets import data
 
 import altair_tiles as til
 
@@ -217,3 +218,28 @@ class TestAddTiles:
 
         assert isinstance(chart, alt.LayerChart)
         assert len(chart.layer) == 2
+
+    def test_provider_with_bounds(self):
+        source = alt.topo_feature(data.world_110m.url, "countries")
+        geoshape_countries = (
+            alt.Chart(source)
+            .mark_geoshape()
+            .encode()
+            .project(
+                type="mercator",
+                scale=4000,
+                center=[8, 47],
+            )
+        )
+        chart = til.add_tiles(
+            geoshape_countries,
+            zoom=8,
+            provider=til.providers.SwissFederalGeoportal.NationalMapColor,
+        )
+
+        bound_filter_condition = chart.layer[0].transform[-1].filter
+
+        assert ">= 131" in bound_filter_condition
+        assert ">= 88" in bound_filter_condition
+        assert "<= 136" in bound_filter_condition
+        assert "<= 91" in bound_filter_condition
