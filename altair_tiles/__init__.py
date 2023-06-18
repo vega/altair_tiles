@@ -174,19 +174,7 @@ def _create_nonstandalone_tiles_chart(
     # https://github.com/vega/vega-lite/issues/5758#issuecomment-1462683219.
     _validate_projection(projection)
 
-    if projection.scale is not alt.Undefined:
-        scale = projection.scale
-        if isinstance(scale, alt.Parameter):
-            scale = scale.name
-    else:
-        # Found here:
-        # https://github.com/d3/d3-geo/blob/main/src/projection/mercator.js#L13
-        # This value is projection specific and would need to be changed.
-        # Check below guards for the case were we support more projections in
-        # the future.
-        if projection.type != "mercator":
-            raise ValueError("Scale must be defined for non-Mercator projections.")
-        scale = 961 / math.tau
+    scale = _get_scale(projection)
     # We use expr and not value below in case it is a Vega expression. expr always
     # expects a string and therefore we use str to convert potential numeric values
     p_pr_scale = alt.param(expr=str(scale), name="pr_scale")
@@ -389,6 +377,23 @@ def _create_nonstandalone_tiles_chart(
     else:
         tiles_final = tiles
     return tiles_final
+
+
+def _get_scale(projection: alt.Projection) -> float:
+    if projection.scale is not alt.Undefined:
+        scale = projection.scale
+        if isinstance(scale, alt.Parameter):
+            scale = scale.name
+    else:
+        # Found here:
+        # https://github.com/d3/d3-geo/blob/main/src/projection/mercator.js#L13
+        # This value is projection specific and would need to be changed.
+        # Check below guards for the case were we support more projections in
+        # the future.
+        if projection.type != "mercator":
+            raise ValueError("Scale must be defined for non-Mercator projections.")
+        scale = 961 / math.tau
+    return scale
 
 
 @dataclass
