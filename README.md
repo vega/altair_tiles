@@ -4,6 +4,8 @@ This package is in an **early development stage**. You should expect things to b
 
 You can use altair_tiles to add tiles from any xyz tile provider to your Altair chart. The goal is to build a counterpart to the amazing [contextily](https://github.com/geopandas/contextily) package which provides this functionality for [matplotlib](https://matplotlib.org/).
 
+You can find the documentation [here](https://altair-viz.github.io/altair_tiles).
+
 ## Installation
 We have not yet put the package on pypi but you can install it from GitHub with:
 
