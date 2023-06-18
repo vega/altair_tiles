@@ -7,8 +7,3 @@ Simplifies the UI. */
 button.btn.btn-sm.btn-fullscreen-button {
     display: none;
 }
-
-/* Same for download button to simplify UI */
-button.btn.dropdown-toggle {
-    display: none;
-}
