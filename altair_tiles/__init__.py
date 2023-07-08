@@ -3,7 +3,7 @@ __all__ = ["add_tiles", "add_attribution", "create_tiles_chart", "providers"]
 
 import math
 from dataclasses import dataclass
-from typing import List, Optional, Union, cast
+from typing import Final, List, Optional, Union, cast
 
 import altair as alt
 import mercantile as mt
@@ -207,17 +207,19 @@ def _create_nonstandalone_tiles_chart(
                 math.log((2 * math.pi * scale) / default_base_tile_size) / math.log(2)
             )
 
-    evaluated_tiles_count: Optional[int] = None
     if evaluated_zoom_level_ceil is not None:
         _validate_zoom(evaluated_zoom_level_ceil, provider=provider)
-        evaluated_tiles_count = 2**evaluated_zoom_level_ceil
 
     p_zoom_ceil = alt.param(expr=f"ceil({p_zoom_level.name})", name="zoom_ceil")
     # Number of tiles per column/row, whichever is larger. Total number of tiles
-    # would then be this number squared although it does not account for tiles
-    # which will be clipped if chart has non-quadratic aspect ratio.
-    p_one_side_tiles_count = alt.param(
-        expr=f"pow(2, {p_zoom_ceil.name})", name="tiles_count"
+    # would then be this number squared. However, this number does not account
+    # for tiles which will be outside of the view, i.e. what is visible on the chart.
+    # It is therefore just the maximum if the whole earth would be visible.
+    # If calculation of this is changed here, it should also be changed in the
+    # _calculate_one_side_grid_size function which calculates this number
+    # in Python.
+    p_max_one_side_tiles_count = alt.param(
+        expr=f"pow(2, {p_zoom_ceil.name})", name="max_one_side_tiles_count"
     )
     p_tile_size = alt.param(
         expr=p_base_tile_size.name
@@ -226,7 +228,8 @@ def _create_nonstandalone_tiles_chart(
     )
     p_base_point = alt.param(expr="invert('projection', [0, 0])", name="base_point")
     p_dii = alt.param(
-        expr=f"({p_base_point.name}[0] + 180) / 360 * {p_one_side_tiles_count.name}",
+        expr=f"({p_base_point.name}[0] + 180) / 360"
+        + f" * {p_max_one_side_tiles_count.name}",
         name="dii",
     )
     p_dii_floor = alt.param(expr=f"floor({p_dii.name})", name="dii_floor")
@@ -236,7 +239,7 @@ def _create_nonstandalone_tiles_chart(
     p_djj = alt.param(
         expr=f"(1 - log(tan({p_base_point.name}[1] * PI / 180)"
         + f" + 1 / cos({p_base_point.name}[1] * PI / 180)) / PI)"
-        + f" / 2 * {p_one_side_tiles_count.name}",
+        + f" / 2 * {p_max_one_side_tiles_count.name}",
         name="djj",
     )
     p_djj_floor = alt.param(expr=f"floor({p_djj.name})", name="djj_floor")
@@ -245,8 +248,8 @@ def _create_nonstandalone_tiles_chart(
         name="dy",
     )
     expr_url_x = (
-        f"((datum.a + {p_dii_floor.name} + {p_one_side_tiles_count.name})"
-        + f" % {p_one_side_tiles_count.name})"
+        f"((datum.a + {p_dii_floor.name} + {p_max_one_side_tiles_count.name})"
+        + f" % {p_max_one_side_tiles_count.name})"
     )
     expr_url_y = f"(datum.b + {p_djj_floor.name})"
 
@@ -262,22 +265,9 @@ def _create_nonstandalone_tiles_chart(
             + "'"
         )
 
-    # Size of tile grid needs to be calculated in Python as it is not possible
-    # yet to use an expression in a data generator such as a sequence.
-    # See https://github.com/vega/vega-lite/issues/7410
-    # The issue with this is that it depends on the size of the chart which
-    # we cannot yet know at this point as it might be changed by e.g. a theme
-    # or by the user themselves when working with the returned layered chart.
+    one_side_grid_size = _calculate_one_side_grid_size(evaluated_zoom_level_ceil)
 
-    # Fallback value of 10 is arbitrary. Ideally, there would be a better heuristic
-    # but it's also only used if the scale is a Vega expression which should
-    # be rare. Adding 2 to the evaluated tiles is also arbitrary to make sure
-    # that we have enough tiles. This might not be necessary. We then remove
-    # the unnecessary tiles again in the transform_filter statement below which is
-    # needed anyway to remove the ones with negative indices.
-    grid_size = evaluated_tiles_count + 2 if evaluated_tiles_count is not None else 10
-
-    tile_list = alt.sequence(0, grid_size, as_="a", name="tile_list")
+    tile_list = alt.sequence(0, one_side_grid_size, as_="a", name="tile_list")
     # Can be a layerchart after adding attribution
     tiles = (
         alt.Chart(tile_list, projection=projection)
@@ -289,7 +279,7 @@ def _create_nonstandalone_tiles_chart(
             width=alt.expr(p_tile_size.name + " + 1"),
         )
         .encode(alt.Url("url:N"), alt.X("x:Q").scale(None), alt.Y("y:Q").scale(None))
-        .transform_calculate(b=f"sequence(0, {grid_size})")
+        .transform_calculate(b=f"sequence(0, {one_side_grid_size})")
         .transform_flatten(["b"])
         .transform_calculate(
             url=build_url(provider, x=expr_url_x, y=expr_url_y, z=p_zoom_ceil.name),
@@ -329,8 +319,8 @@ def _create_nonstandalone_tiles_chart(
             chart=tiles,
             x_min=0,
             y_min=0,
-            x_max=f"({p_one_side_tiles_count.name} - 1)",
-            y_max=f"({p_one_side_tiles_count.name} - 1)",
+            x_max=f"({p_max_one_side_tiles_count.name} - 1)",
+            y_max=f"({p_max_one_side_tiles_count.name} - 1)",
             expr_url_x=expr_url_x,
             expr_url_y=expr_url_y,
         )
@@ -360,7 +350,7 @@ def _create_nonstandalone_tiles_chart(
         p_pr_scale,
         p_zoom_level,
         p_zoom_ceil,
-        p_one_side_tiles_count,
+        p_max_one_side_tiles_count,
         p_tile_size,
         p_base_point,
         p_dii,
@@ -464,6 +454,33 @@ def _validate_zoom(zoom: int, provider: TileProvider) -> None:
         else:
             msg += "."
         raise ValueError(msg)
+
+
+def _calculate_one_side_grid_size(evaluated_zoom_level_ceil: Optional[int]) -> int:
+    # Size of tile grid needs to be calculated in Python as it is not possible
+    # yet to use an expression in a data generator such as a sequence.
+    # See https://github.com/vega/vega-lite/issues/7410
+    # The issue with this is that it depends on the size of the chart which
+    # we cannot yet know at this point as it might be changed by e.g. a theme
+    # or by the user themselves when working with the returned chart.
+    # Therefore, we try to make the grid as large as possible but also limit
+    # it to a reasonable size as at one point Vega will no longer be able to
+    # generate the sequence if its too large or it just will be very slow.
+
+    # Maximum value is arbitrary.
+    maximum_value: Final[int] = 20
+    one_side_grid_size: int
+    if evaluated_zoom_level_ceil is not None:
+        # This is the same formula as used in the Vega-Lite spec for the
+        # max_one_side_tiles_count parameter.
+        evaluated_max_one_side_tiles_count = 2**evaluated_zoom_level_ceil
+        # Adding 2 to the evaluated tiles is arbitrary to make sure
+        # that we have enough tiles. This might not be necessary.
+        one_side_grid_size = min(evaluated_max_one_side_tiles_count + 2, maximum_value)
+    else:
+        one_side_grid_size = maximum_value
+
+    return one_side_grid_size
 
 
 def add_attribution(
