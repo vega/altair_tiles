@@ -71,7 +71,7 @@ features = ["dev", "doc"]
 
 [tool.hatch.envs.default.scripts]
 test = [
-    "ruff --diff --check .",
+    "ruff format --diff --check .",
     "ruff check .",
     "mypy altair_tiles tests",
     "python -m pytest tests",
