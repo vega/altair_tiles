@@ -59,16 +59,6 @@ def add_tiles(
             + " and then add them as a normal layer to the existing layer chart."
         )
 
-    if chart.projection is alt.Undefined:
-        raise ValueError("Projection must be defined and be of type Mercator.")
-
-    if (
-        chart.mark is alt.Undefined
-        or (isinstance(chart.mark, str) and chart.mark != "geoshape")
-        or (isinstance(chart.mark, alt.MarkDef) and chart.mark.type != "geoshape")
-    ):
-        raise ValueError("Chart must have a geoshape mark.")
-
     tiles = create_tiles_chart(
         projection=chart.projection,
         provider=provider,
@@ -172,14 +162,10 @@ def _create_nonstandalone_tiles_chart(
     # The calculations below are based on initial implementations in Vega
     # https://github.com/vega/vega/issues/1212#issuecomment-384680678 and in Vega-Lite
     # https://github.com/vega/vega-lite/issues/5758#issuecomment-1462683219.
-    _validate_projection(projection)
 
-    scale = _get_scale(projection)
-    # We use expr and not value below in case it is a Vega expression. expr always
-    # expects a string and therefore we use str to convert potential numeric values
-    p_pr_scale = alt.param(expr=str(scale), name="pr_scale")
+    p_pr_scale = alt.param(expr="geoScale('projection')", name="pr_scale")
 
-    evaluated_zoom_level_ceil: Optional[int] = None
+    evaluated_zoom_level_ceil: Optional[int]
     if zoom is not None:
         p_zoom_level = alt.param(value=zoom, name="zoom_level")
         p_base_tile_size = alt.param(
@@ -199,13 +185,9 @@ def _create_nonstandalone_tiles_chart(
             + " log(2)",
             name="zoom_level",
         )
-        if isinstance(scale, (float, int)):
-            # In this case, we can also evaluate the zoom level.
-            # Else, it could be a Vega expression in which case we can't evaluate
-            # it in Python.
-            evaluated_zoom_level_ceil = math.ceil(
-                math.log((2 * math.pi * scale) / default_base_tile_size) / math.log(2)
-            )
+        # As we don't know the scale of the projection yet, we cannot evaluate
+        # the zoom level.
+        evaluated_zoom_level_ceil = None
 
     if evaluated_zoom_level_ceil is not None:
         _validate_zoom(evaluated_zoom_level_ceil, provider=provider)
@@ -367,23 +349,6 @@ def _create_nonstandalone_tiles_chart(
     else:
         tiles_final = tiles
     return tiles_final
-
-
-def _get_scale(projection: alt.Projection) -> float:
-    if projection.scale is not alt.Undefined:
-        scale = projection.scale
-        if isinstance(scale, alt.Parameter):
-            scale = scale.name
-    else:
-        # Found here:
-        # https://github.com/d3/d3-geo/blob/main/src/projection/mercator.js#L13
-        # This value is projection specific and would need to be changed.
-        # Check below guards for the case were we support more projections in
-        # the future.
-        if projection.type != "mercator":
-            raise ValueError("Scale must be defined for non-Mercator projections.")
-        scale = 961 / math.tau
-    return scale
 
 
 @dataclass
