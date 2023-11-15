@@ -11,9 +11,8 @@ import altair_tiles as til
 def test_raise_if_invalid_zoom_level():
     # Test minimum zoom
     with pytest.raises(ValueError, match="is not valid for the current tile provider"):
-        til.create_tiles_chart(projection=alt.Projection(type="mercator"), zoom=-1)
+        til.create_tiles_chart(zoom=-1)
     til.create_tiles_chart(
-        projection=alt.Projection(type="mercator"),
         zoom=0,
     )
 
@@ -24,23 +23,14 @@ def test_raise_if_invalid_zoom_level():
     assert isinstance(max_zoom, int)
     with pytest.raises(ValueError, match="is not valid for the current tile provider"):
         til.create_tiles_chart(
-            projection=alt.Projection(type="mercator"),
             zoom=max_zoom + 1,
             provider=provider,
         )
 
     til.create_tiles_chart(
-        projection=alt.Projection(type="mercator"),
         zoom=max_zoom,
         provider=provider,
     )
-
-    # Test if no zoom is provided but scale instead
-    with pytest.raises(ValueError, match="is not valid for the current tile provider"):
-        til.create_tiles_chart(
-            projection=alt.Projection(type="mercator", scale=200_000_000),
-            provider=provider,
-        )
 
 
 def test_validate_projection():
@@ -132,17 +122,18 @@ class TestCreateTilesChart:
     def test_raise_if_invalid_zoom_type(self):
         with pytest.raises(TypeError, match="Zoom must be an integer or None"):
             til.create_tiles_chart(
-                projection=alt.Projection(type="mercator"),
                 zoom="1",  # type: ignore[arg-type]
             )
 
     def test_create_tiles_chart(self):
-        chart = til.create_tiles_chart(projection=alt.Projection(type="mercator"))
+        chart = til.create_tiles_chart()
 
         assert isinstance(chart, alt.LayerChart)
         assert len(chart.layer) == 2
         geoshape_layer = chart.layer[0]
-        assert geoshape_layer.to_dict()["mark"]["type"] == "geoshape"
+        geoshape_dict = geoshape_layer.to_dict()
+        assert geoshape_dict["mark"]["type"] == "geoshape"
+        assert geoshape_dict["projection"]["type"] == "mercator"
 
         image_layered_chart = chart.layer[1]
         assert isinstance(image_layered_chart, alt.LayerChart)
@@ -153,10 +144,19 @@ class TestCreateTilesChart:
         attr_layer = image_layered_chart.layer[1]
         assert attr_layer.to_dict()["mark"]["type"] == "text"
 
-    def test_non_standalone(self):
         chart = til.create_tiles_chart(
-            projection=alt.Projection(type="mercator"), standalone=False
+            standalone=alt.Projection(type="mercator", scale=200)
         )
+        assert isinstance(chart, alt.LayerChart)
+        assert len(chart.layer) == 2
+        geoshape_layer = chart.layer[0]
+        geoshape_dict = geoshape_layer.to_dict()
+        assert geoshape_dict["mark"]["type"] == "geoshape"
+        assert geoshape_dict["projection"]["type"] == "mercator"
+        assert geoshape_dict["projection"]["scale"] == 200
+
+    def test_non_standalone(self):
+        chart = til.create_tiles_chart(standalone=False)
 
         assert isinstance(chart, alt.LayerChart)
         assert len(chart.layer) == 2
@@ -170,7 +170,6 @@ class TestCreateTilesChart:
 
     def test_no_attribution(self):
         chart = til.create_tiles_chart(
-            projection=alt.Projection(type="mercator"),
             attribution=False,
             standalone=False,
         )
@@ -185,17 +184,6 @@ class TestAddTiles:
             TypeError, match="Only altair.Chart instances are supported"
         ):
             til.add_tiles(alt.LayerChart)
-
-    def test_raise_if_no_projection_defined(self):
-        with pytest.raises(ValueError, match="Projection must be defined"):
-            til.add_tiles(alt.Chart().mark_geoshape())
-
-    def test_raise_if_no_mark_geoshape(self):
-        with pytest.raises(ValueError, match="Chart must have a geoshape mark"):
-            til.add_tiles(alt.Chart().project(type="mercator"))
-
-        with pytest.raises(ValueError, match="Chart must have a geoshape mark"):
-            til.add_tiles(alt.Chart().mark_bar().project(type="mercator"))
 
     def test_add_tiles(self):
         chart = til.add_tiles(alt.Chart().mark_geoshape().project(type="mercator"))
