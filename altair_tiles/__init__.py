@@ -23,7 +23,7 @@ def add_tiles(
     Parameters
     ----------
     chart : alt.Chart
-        A chart with a geoshape mark and a Mercator projection.
+        A chart with a Mercator projection.
     provider : Union[str, TileProvider], optional
         The provider of the tiles. You can access all available preconfigured providers
         at `altair_tiles.providers` such as
@@ -60,7 +60,6 @@ def add_tiles(
         )
 
     tiles = create_tiles_chart(
-        projection=chart.projection,
         provider=provider,
         zoom=zoom,
         # Set attribution to False here as we want to add it in the end so it is
@@ -78,7 +77,6 @@ def add_tiles(
 
 
 def create_tiles_chart(
-    projection: alt.Projection,
     provider: Union[str, TileProvider] = "OpenStreetMap.Mapnik",
     zoom: Optional[int] = None,
     attribution: Union[str, bool] = True,
@@ -88,10 +86,6 @@ def create_tiles_chart(
 
     Parameters
     ----------
-    projection : alt.Projection
-        The projection of the chart. It must at least specify the type of the projection
-        which must be scale, e.g. `alt.Projection(type="mercator")`. If you already
-        have a chart, you can pass the projection of the chart, e.g. `chart.projection`.
     provider : Union[str, TileProvider], optional
         _description_, by default "OpenStreetMap.Mapnik"
     provider : Union[str, TileProvider], optional
@@ -109,13 +103,18 @@ def create_tiles_chart(
         If True, the default attribution text for the provider, if available, is added
         to the chart. You can also provide a custom text as a string or disable
         the attribution text by setting this to False. By default True
-    standalone : bool, optional
-        If True, the chart will be returned as a chart which can be rendered standalone.
-        It has an additional layer with a geoshape mark and the projection set. This is
-        required for the tiles to properly show up. If False, the chart will be returned
-        in a form where it can be added to an existing chart with a geoshape
-        mark. You culd also add a standalone chart to an existing chart
+    standalone : Union[bool, alt.Projection], optional
+        If True, the returned chart will have an additional layer with
+        a geoshape mark and a mercator projection set which allows the tiles
+        to properly show up and hence you can render the chart as-is.
+        If False, the chart will be returned in a form where it can be added
+        to an existing chart which must have a projection.
+        You could also add a standalone chart to an existing chart
         but the resulting specification is slightly simpler if you choose standalone.
+        To customize the projection which is set in the standalone chart, you can
+        also pass an alt.Projection instance here which must have at least
+        type set to mercator, e.g. `alt.Projection(type="mercator")`. If you already
+        have a chart, you can pass the projection of the chart, e.g. `chart.projection`.
         Defaults to True.
 
 
@@ -138,14 +137,18 @@ def create_tiles_chart(
     # if we layer the tiles together with another geoshape chart which also
     # has the projection attribute set.
     tiles = _create_nonstandalone_tiles_chart(
-        projection=projection,
         provider=provider,
         zoom=zoom,
         attribution=attribution,
     )
 
     if standalone:
-        base_layer = alt.Chart().mark_geoshape().properties(projection=projection)
+        if standalone is True:
+            standalone = alt.Projection(type="mercator")
+        else:
+            # In this case it already is an instance of alt.Projection
+            _validate_projection(standalone)
+        base_layer = alt.Chart().mark_geoshape().properties(projection=standalone)
         # If we use tiles as the first layer then the chart is 20px by 20px by default.
         # Unclear why but the other way around works fine.
         return base_layer + tiles
@@ -154,7 +157,6 @@ def create_tiles_chart(
 
 
 def _create_nonstandalone_tiles_chart(
-    projection: alt.Projection,
     provider: TileProvider,
     zoom: Optional[int],
     attribution: Union[str, bool],
@@ -252,7 +254,7 @@ def _create_nonstandalone_tiles_chart(
     tile_list = alt.sequence(0, one_side_grid_size, as_="a", name="tile_list")
     # Can be a layerchart after adding attribution
     tiles = (
-        alt.Chart(tile_list, projection=projection)
+        alt.Chart(tile_list)
         .mark_image(
             clip=True,
             # For some settings, the tiles would show a fine gap between them. By adding
@@ -508,5 +510,7 @@ def _resolve_provider(provider: Union[str, TileProvider]) -> TileProvider:
 
 
 def _validate_projection(projection: alt.Projection) -> None:
+    if not isinstance(projection, alt.Projection):
+        raise TypeError("Projection must be an alt.Projection instance.")
     if projection.type != "mercator":
         raise ValueError("Projection must be of type 'mercator'.")
