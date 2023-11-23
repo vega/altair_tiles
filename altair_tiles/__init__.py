@@ -23,7 +23,7 @@ def add_tiles(
     Parameters
     ----------
     chart : alt.Chart
-        A chart with a geoshape mark and a Mercator projection.
+        A chart with a Mercator projection.
     provider : Union[str, TileProvider], optional
         The provider of the tiles. You can access all available preconfigured providers
         at `altair_tiles.providers` such as
@@ -59,18 +59,7 @@ def add_tiles(
             + " and then add them as a normal layer to the existing layer chart."
         )
 
-    if chart.projection is alt.Undefined:
-        raise ValueError("Projection must be defined and be of type Mercator.")
-
-    if (
-        chart.mark is alt.Undefined
-        or (isinstance(chart.mark, str) and chart.mark != "geoshape")
-        or (isinstance(chart.mark, alt.MarkDef) and chart.mark.type != "geoshape")
-    ):
-        raise ValueError("Chart must have a geoshape mark.")
-
     tiles = create_tiles_chart(
-        projection=chart.projection,
         provider=provider,
         zoom=zoom,
         # Set attribution to False here as we want to add it in the end so it is
@@ -88,7 +77,6 @@ def add_tiles(
 
 
 def create_tiles_chart(
-    projection: alt.Projection,
     provider: Union[str, TileProvider] = "OpenStreetMap.Mapnik",
     zoom: Optional[int] = None,
     attribution: Union[str, bool] = True,
@@ -98,10 +86,6 @@ def create_tiles_chart(
 
     Parameters
     ----------
-    projection : alt.Projection
-        The projection of the chart. It must at least specify the type of the projection
-        which must be scale, e.g. `alt.Projection(type="mercator")`. If you already
-        have a chart, you can pass the projection of the chart, e.g. `chart.projection`.
     provider : Union[str, TileProvider], optional
         _description_, by default "OpenStreetMap.Mapnik"
     provider : Union[str, TileProvider], optional
@@ -119,13 +103,18 @@ def create_tiles_chart(
         If True, the default attribution text for the provider, if available, is added
         to the chart. You can also provide a custom text as a string or disable
         the attribution text by setting this to False. By default True
-    standalone : bool, optional
-        If True, the chart will be returned as a chart which can be rendered standalone.
-        It has an additional layer with a geoshape mark and the projection set. This is
-        required for the tiles to properly show up. If False, the chart will be returned
-        in a form where it can be added to an existing chart with a geoshape
-        mark. You culd also add a standalone chart to an existing chart
+    standalone : Union[bool, alt.Projection], optional
+        If True, the returned chart will have an additional layer with
+        a geoshape mark and a mercator projection set which allows the tiles
+        to properly show up and hence you can render the chart as-is.
+        If False, the chart will be returned in a form where it can be added
+        to an existing chart which must have a projection.
+        You could also add a standalone chart to an existing chart
         but the resulting specification is slightly simpler if you choose standalone.
+        To customize the projection which is set in the standalone chart, you can
+        also pass an alt.Projection instance here which must have at least
+        type set to mercator, e.g. `alt.Projection(type="mercator")`. If you already
+        have a chart, you can pass the projection of the chart, e.g. `chart.projection`.
         Defaults to True.
 
 
@@ -148,14 +137,18 @@ def create_tiles_chart(
     # if we layer the tiles together with another geoshape chart which also
     # has the projection attribute set.
     tiles = _create_nonstandalone_tiles_chart(
-        projection=projection,
         provider=provider,
         zoom=zoom,
         attribution=attribution,
     )
 
     if standalone:
-        base_layer = alt.Chart().mark_geoshape().properties(projection=projection)
+        if standalone is True:
+            standalone = alt.Projection(type="mercator")
+        else:
+            # In this case it already is an instance of alt.Projection
+            _validate_projection(standalone)
+        base_layer = alt.Chart().mark_geoshape().properties(projection=standalone)
         # If we use tiles as the first layer then the chart is 20px by 20px by default.
         # Unclear why but the other way around works fine.
         return base_layer + tiles
@@ -164,7 +157,6 @@ def create_tiles_chart(
 
 
 def _create_nonstandalone_tiles_chart(
-    projection: alt.Projection,
     provider: TileProvider,
     zoom: Optional[int],
     attribution: Union[str, bool],
@@ -172,14 +164,10 @@ def _create_nonstandalone_tiles_chart(
     # The calculations below are based on initial implementations in Vega
     # https://github.com/vega/vega/issues/1212#issuecomment-384680678 and in Vega-Lite
     # https://github.com/vega/vega-lite/issues/5758#issuecomment-1462683219.
-    _validate_projection(projection)
 
-    scale = _get_scale(projection)
-    # We use expr and not value below in case it is a Vega expression. expr always
-    # expects a string and therefore we use str to convert potential numeric values
-    p_pr_scale = alt.param(expr=str(scale), name="pr_scale")
+    p_pr_scale = alt.param(expr="geoScale('projection')", name="pr_scale")
 
-    evaluated_zoom_level_ceil: Optional[int] = None
+    evaluated_zoom_level_ceil: Optional[int]
     if zoom is not None:
         p_zoom_level = alt.param(value=zoom, name="zoom_level")
         p_base_tile_size = alt.param(
@@ -199,13 +187,9 @@ def _create_nonstandalone_tiles_chart(
             + " log(2)",
             name="zoom_level",
         )
-        if isinstance(scale, (float, int)):
-            # In this case, we can also evaluate the zoom level.
-            # Else, it could be a Vega expression in which case we can't evaluate
-            # it in Python.
-            evaluated_zoom_level_ceil = math.ceil(
-                math.log((2 * math.pi * scale) / default_base_tile_size) / math.log(2)
-            )
+        # As we don't know the scale of the projection yet, we cannot evaluate
+        # the zoom level.
+        evaluated_zoom_level_ceil = None
 
     if evaluated_zoom_level_ceil is not None:
         _validate_zoom(evaluated_zoom_level_ceil, provider=provider)
@@ -270,7 +254,7 @@ def _create_nonstandalone_tiles_chart(
     tile_list = alt.sequence(0, one_side_grid_size, as_="a", name="tile_list")
     # Can be a layerchart after adding attribution
     tiles = (
-        alt.Chart(tile_list, projection=projection)
+        alt.Chart(tile_list)
         .mark_image(
             clip=True,
             # For some settings, the tiles would show a fine gap between them. By adding
@@ -367,23 +351,6 @@ def _create_nonstandalone_tiles_chart(
     else:
         tiles_final = tiles
     return tiles_final
-
-
-def _get_scale(projection: alt.Projection) -> float:
-    if projection.scale is not alt.Undefined:
-        scale = projection.scale
-        if isinstance(scale, alt.Parameter):
-            scale = scale.name
-    else:
-        # Found here:
-        # https://github.com/d3/d3-geo/blob/main/src/projection/mercator.js#L13
-        # This value is projection specific and would need to be changed.
-        # Check below guards for the case were we support more projections in
-        # the future.
-        if projection.type != "mercator":
-            raise ValueError("Scale must be defined for non-Mercator projections.")
-        scale = 961 / math.tau
-    return scale
 
 
 @dataclass
@@ -543,5 +510,7 @@ def _resolve_provider(provider: Union[str, TileProvider]) -> TileProvider:
 
 
 def _validate_projection(projection: alt.Projection) -> None:
+    if not isinstance(projection, alt.Projection):
+        raise TypeError("Projection must be an alt.Projection instance.")
     if projection.type != "mercator":
         raise ValueError("Projection must be of type 'mercator'.")
