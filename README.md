@@ -13,6 +13,8 @@ We have not yet put the package on pypi but you can install it from GitHub with:
 pip install git+https://github.com/altair-viz/altair_tiles.git
 ```
 
+altair-tiles requires at least Vega version `5.26.0`. If you use an IDE such as a Jupyter Notebook or VS Code, you usually don't have to worry about this.
+
 ## Development
 ```bash
 python -m venv .venv
