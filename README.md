@@ -7,10 +7,8 @@ You can use altair_tiles to add tiles from any xyz tile provider such as OpenStr
 You can find the documentation [here](https://altair-viz.github.io/altair_tiles). For a general introduction to plotting geographic data with Altair, see [Geoshape - Vega-Altair](https://altair-viz.github.io/user_guide/marks/geoshape.html) and [Specifying Data - Vega-Altair](https://altair-viz.github.io/user_guide/data.html#spatial-data).
 
 ## Installation
-We have not yet put the package on pypi but you can install it from GitHub with:
-
 ```bash
-pip install git+https://github.com/altair-viz/altair_tiles.git
+pip install altair_tiles
 ```
 
 altair-tiles requires at least Vega version `5.26.0`. If you use an IDE such as a Jupyter Notebook or VS Code, you usually don't have to worry about this.
