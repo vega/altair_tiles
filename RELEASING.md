@@ -24,7 +24,7 @@
 
 6. Tag the release:
 
-       git tag -a v5.0.0 -m "version 5.0.0 release"
+       git tag -a v5.0.0 -m "Version 5.0.0 release"
        git push upstream v5.0.0
 
 7. Build source & wheel distributions:
@@ -45,7 +45,7 @@
 11. Commit change and push to main:
 
         git add . -u
-        git commit -m "MAINT: bump version to 5.1.0dev"
+        git commit -m "MAINT: Bump version to 5.1.0dev"
         git push upstream main
 
-12. Add release in https://github.com/binste/dbt-ibis/releases and select the version tag
+12. Add release in https://github.com/altair-viz/altair_tiles/releases and select the version tag
