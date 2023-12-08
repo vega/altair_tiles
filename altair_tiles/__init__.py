@@ -52,13 +52,6 @@ def add_tiles(
         If chart does not have a geoshape mark or a Mercator projection
         or no projection.
     """
-    if not isinstance(chart, alt.Chart):
-        raise TypeError(
-            "Only altair.Chart instances are supported. If you want to add"
-            + " tiles to a layer chart, use create_tiles_chart to create the tiles"
-            + " and then add them as a normal layer to the existing layer chart."
-        )
-
     tiles = create_tiles_chart(
         provider=provider,
         zoom=zoom,
@@ -68,9 +61,9 @@ def add_tiles(
         standalone=False,
     )
 
-    final_chart = tiles + chart
+    final_chart = tiles + chart  # type: ignore  # noqa: PGH003
     if attribution:
-        final_chart = add_attribution(
+        final_chart = add_attribution(  # type: ignore[assignment]
             chart=final_chart, provider=provider, attribution=attribution
         )
     return final_chart
@@ -80,7 +73,7 @@ def create_tiles_chart(
     provider: Union[str, TileProvider] = "OpenStreetMap.Mapnik",
     zoom: Optional[int] = None,
     attribution: Union[str, bool] = True,
-    standalone: bool = True,
+    standalone: Union[bool, alt.Projection] = True,
 ) -> Union[alt.LayerChart, alt.Chart]:
     """Creates an Altair chart with tiles.
 
@@ -383,7 +376,7 @@ def _transform_filter_url_x_y_bounds(
     y_max: Union[str, int],
     expr_url_x: str,
     expr_url_y: str,
-) -> str:
+) -> alt.Chart:
     chart = chart.transform_filter(
         # Lower bounds
         expr_url_x

@@ -179,12 +179,6 @@ class TestCreateTilesChart:
 
 
 class TestAddTiles:
-    def test_raise_if_not_chart(self):
-        with pytest.raises(
-            TypeError, match="Only altair.Chart instances are supported"
-        ):
-            til.add_tiles(alt.LayerChart)
-
     def test_add_tiles(self):
         chart = til.add_tiles(alt.Chart().mark_geoshape().project(type="mercator"))
 
