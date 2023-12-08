@@ -52,13 +52,6 @@ def add_tiles(
         If chart does not have a geoshape mark or a Mercator projection
         or no projection.
     """
-    if not isinstance(chart, alt.Chart):
-        raise TypeError(
-            "Only altair.Chart instances are supported. If you want to add"
-            + " tiles to a layer chart, use create_tiles_chart to create the tiles"
-            + " and then add them as a normal layer to the existing layer chart."
-        )
-
     tiles = create_tiles_chart(
         provider=provider,
         zoom=zoom,
