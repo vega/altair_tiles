@@ -1,0 +1,1 @@
+The altair_tiles project is governed by the documents that reside in the [Vega Organizational GitHub repository](https://github.com/vega/.github/).
