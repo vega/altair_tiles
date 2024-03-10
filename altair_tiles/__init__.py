@@ -3,7 +3,7 @@ __all__ = ["add_tiles", "add_attribution", "create_tiles_chart", "providers"]
 
 import math
 from dataclasses import dataclass
-from typing import Final, Optional, Union, cast
+from typing import Final, Optional, Union, cast, List
 
 import altair as alt
 import mercantile as mt
@@ -354,7 +354,7 @@ class _XYMinMax:
     y_max: int
 
 
-def _bounds_to_x_y_min_max(bounds: list[list[float]], zoom: int) -> _XYMinMax:
+def _bounds_to_x_y_min_max(bounds: List[List[float]], zoom: int) -> _XYMinMax:
     south_west, north_east = bounds
     south, west = south_west
     north, east = north_east
