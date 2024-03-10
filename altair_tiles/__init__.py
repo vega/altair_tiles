@@ -3,7 +3,7 @@ __all__ = ["add_tiles", "add_attribution", "create_tiles_chart", "providers"]
 
 import math
 from dataclasses import dataclass
-from typing import Final, Optional, Union, cast, List
+from typing import Final, List, Optional, Union, cast
 
 import altair as alt
 import mercantile as mt
