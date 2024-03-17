@@ -10,6 +10,10 @@ You can find the documentation [here](https://altair-viz.github.io/altair_tiles)
 ```bash
 pip install altair_tiles
 ```
+or
+```bash
+conda install -c conda-forge altair_tiles
+```
 
 altair-tiles requires at least Vega version `5.26.0`. If you use an IDE such as a Jupyter Notebook or VS Code, you usually don't have to worry about this.
 

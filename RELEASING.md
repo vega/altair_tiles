@@ -49,3 +49,7 @@
         git push upstream main
 
 12. Add release in https://github.com/altair-viz/altair_tiles/releases and select the version tag
+
+13. Double-check that a conda-forge pull request is generated from the updated
+    pip package by the conda-forge bot (may take up to ~an hour):
+    https://github.com/conda-forge/altair_tiles-feedstock/pulls
