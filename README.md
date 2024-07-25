@@ -4,7 +4,9 @@ This package is in an early development stage. You should expect things to break
 
 You can use altair_tiles to add tiles from any xyz tile provider such as OpenStreetMap to your Altair chart. It is a counterpart to the amazing [contextily](https://github.com/geopandas/contextily) package which provides this functionality for [matplotlib](https://matplotlib.org/).
 
-You can find the documentation [here](https://altair-viz.github.io/altair_tiles). For a general introduction to plotting geographic data with Altair, see [Geoshape - Vega-Altair](https://altair-viz.github.io/user_guide/marks/geoshape.html) and [Specifying Data - Vega-Altair](https://altair-viz.github.io/user_guide/data.html#spatial-data).
+You can find the documentation [here](https://vega.github.io/altair_tiles). 
+
+For a general introduction to plotting geographic data with Altair, see [Geoshape - Vega-Altair](https://altair-viz.github.io/user_guide/marks/geoshape.html) and [Specifying Data - Vega-Altair](https://altair-viz.github.io/user_guide/data.html#spatial-data).
 
 ## Installation
 ```bash
