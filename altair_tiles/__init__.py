@@ -266,7 +266,10 @@ def _create_nonstandalone_tiles_chart(
 
     one_side_grid_size = _calculate_one_side_grid_size(evaluated_zoom_level_ceil)
 
-    tile_list = alt.sequence(0, one_side_grid_size, as_="a", name=f"tile_list_{os.urandom(6).hex()}")
+    tile_list = alt.sequence(
+        0, one_side_grid_size, as_="a", name=f"tile_list_{os.urandom(6).hex()}"
+    )
+
     # Can be a layerchart after adding attribution
     tiles = (
         alt.Chart(tile_list)
