@@ -1,6 +1,7 @@
 __version__ = "0.4.0dev"
 __all__ = ["add_tiles", "add_attribution", "create_tiles_chart", "providers"]
 
+import os
 import math
 from dataclasses import dataclass
 from typing import Final, List, Optional, Union, cast
@@ -244,7 +245,7 @@ def _create_nonstandalone_tiles_chart(
 
     one_side_grid_size = _calculate_one_side_grid_size(evaluated_zoom_level_ceil)
 
-    tile_list = alt.sequence(0, one_side_grid_size, as_="a", name="tile_list")
+    tile_list = alt.sequence(0, one_side_grid_size, as_="a", name=f"tile_list_{os.urandom(6).hex()}")
     # Can be a layerchart after adding attribution
     tiles = (
         alt.Chart(tile_list)
