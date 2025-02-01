@@ -17,7 +17,7 @@ def add_tiles(
     provider: Union[str, TileProvider] = "OpenStreetMap.Mapnik",
     zoom: Optional[int] = None,
     attribution: Union[str, bool] = True,
-    width: Optinonal[int] = None,
+    width: Optional[int] = None,
     height: Optional[int] = None,
 ) -> alt.LayerChart:
     """Adds tiles to a chart. The chart must have a geoshape mark and a Mercator
@@ -85,7 +85,7 @@ def create_tiles_chart(
     zoom: Optional[int] = None,
     attribution: Union[str, bool] = True,
     standalone: Union[bool, alt.Projection] = True,
-    width: Optinonal[int] = None,
+    width: Optional[int] = None,
     height: Optional[int] = None,
 ) -> Union[alt.LayerChart, alt.Chart]:
     """Creates an Altair chart with tiles.
@@ -173,7 +173,7 @@ def _create_nonstandalone_tiles_chart(
     provider: TileProvider,
     zoom: Optional[int],
     attribution: Union[str, bool],
-    width: Optinonal[int],
+    width: Optional[int],
     height: Optional[int],
 ) -> Union[alt.Chart, alt.LayerChart]:
     # The calculations below are based on initial implementations in Vega
