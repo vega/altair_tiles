@@ -1,8 +1,8 @@
 __version__ = "0.4.0dev"
 __all__ = ["add_tiles", "add_attribution", "create_tiles_chart", "providers"]
 
-import os
 import math
+import os
 from dataclasses import dataclass
 from typing import Final, List, Optional, Union, cast
 
@@ -43,11 +43,13 @@ def add_tiles(
         to the chart. You can also provide a custom text as a string or disable
         the attribution text by setting this to False. By default True
     width : Optional[int], optional
-        Manually set the width of the tile chart. This allows for using the tile chart in
-        concatenation operations, where it may otherwise fail to detect the correct width.
+        Manually set the width of the tile chart. This allows for using the tile chart
+        in concatenation operations, where it may otherwise fail to detect the correct
+        width.
     height : Optional[int], optional
-        Manually set the height of the tile chart. This allows for using the tile chart in
-        concatenation operations, where it may otherwise fail to detect the correct height.
+        Manually set the height of the tile chart. This allows for using the tile chart
+        in concatenation operations, where it may otherwise fail to detect the correct
+        height.
 
     Returns
     -------
@@ -123,11 +125,13 @@ def create_tiles_chart(
         have a chart, you can pass the projection of the chart, e.g. `chart.projection`.
         Defaults to True.
     width : Optional[int], optional
-        Manually set the width of the tile chart. This allows for using the tile chart in
-        concatenation operations, where it may otherwise fail to detect the correct width.
+        Manually set the width of the tile chart. This allows for using the tile chart
+        in concatenation operations, where it may otherwise fail to detect the correct
+        width.
     height : Optional[int], optional
-        Manually set the height of the tile chart. This allows for using the tile chart in
-        concatenation operations, where it may otherwise fail to detect the correct height.
+        Manually set the height of the tile chart. This allows for using the tile chart
+        in concatenation operations, where it may otherwise fail to detect the correct
+        height.
 
     Returns
     -------
@@ -300,15 +304,16 @@ def _create_nonstandalone_tiles_chart(
     # x and y below refer to the x and y coordinates on the chart, not the x and y
     # in the tile urls.
 
-    # Note that height and width may be (incorrectly) set to zero when used in a concatenated
-    # chart. In those cases, the childHeight and childWidth signals are instead set, but we
-    # cannot use these because they don't always exists and referencing an undefined signal
-    # throws an error.
+    # Note that height and width may be (incorrectly) set to zero when used in a
+    # concatenated chart. In those cases, the childHeight and childWidth signals are
+    # instead set, but we cannot use these because they don't always exists and
+    # referencing an undefined signal throws an error.
     #
-    # Instead, just use the manually provided dimensions to allow the caller to override the
-    # erroneous height or width signals.
+    # Instead, just use the manually provided dimensions to allow the caller to override
+    # the erroneous height or width signals.
     tiles = tiles.transform_filter(
-        f"datum.x < ({width or 'width'} + tile_size / 2) && datum.y < ({height or 'height'} + tile_size / 2)"
+        f"datum.x < ({width or 'width'} + tile_size / 2) && "
+        + f"datum.y < ({height or 'height'} + tile_size / 2)"
     )
 
     # Remove tile urls which are not valid for the given provider. Else, they would
