@@ -1,5 +1,5 @@
 __version__ = "0.4.0dev"
-__all__ = ["add_tiles", "add_attribution", "create_tiles_chart", "providers"]
+__all__ = ["add_attribution", "add_tiles", "create_tiles_chart", "providers"]
 
 import math
 from dataclasses import dataclass
@@ -61,7 +61,7 @@ def add_tiles(
         standalone=False,
     )
 
-    final_chart = tiles + chart  # type: ignore  # noqa: PGH003
+    final_chart = tiles + chart
     if attribution:
         final_chart = add_attribution(  # type: ignore[assignment]
             chart=final_chart, provider=provider, attribution=attribution
