@@ -1,4 +1,4 @@
-__version__ = "0.4.0dev"
+__version__ = "0.4.0"
 __all__ = ["add_attribution", "add_tiles", "create_tiles_chart", "providers"]
 
 import math
