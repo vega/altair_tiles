@@ -1,0 +1,12 @@
+/* Do not show 'Fullscreen' button as users can do that already via their browser.
+Simplifies the UI. */
+button.btn.btn-sm.btn-fullscreen-button {
+    display: none;
+}
+
+/* Hide this empty container as it leads to a vertical scrollbar in
+the primary sidebar even if there is no need for such a scrollbar as all content
+would fit onto the screen */
+#rtd-footer-container {
+    display: none;
+}
