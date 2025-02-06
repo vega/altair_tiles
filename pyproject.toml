@@ -18,17 +18,17 @@ dependencies = ["altair", "xyzservices", "mercantile"]
 description = "altair_tiles"
 readme = "README.md"
 keywords = ["altair", "basemaps", "tiles"]
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 dynamic = ["version"]
-license-files = { paths = ["LICENSE"] }
+license-files = ["LICENSE"]
 classifiers = [
     "License :: OSI Approved :: BSD License",
     "Natural Language :: English",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Typing :: Typed",
 ]
 
@@ -87,9 +87,9 @@ build-and-publish = ["clean", "build", "publish"]
 
 
 [tool.ruff]
-target-version = "py38"
+target-version = "py39"
 line-length = 88
-exclude = [".git", "build", "__pycache__"]
+exclude = [".git", "build", "__pycache__", "*.ipynb"]
 
 [tool.ruff.lint]
 select = [
@@ -148,7 +148,7 @@ warn_unused_configs = true
 warn_redundant_casts = true
 warn_unused_ignores = true
 strict_equality = true
-strict_concatenate = true
+extra_checks = true
 check_untyped_defs = true
 disallow_untyped_defs = true
 
