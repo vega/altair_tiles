@@ -87,6 +87,8 @@ build-and-publish = ["clean", "build", "publish"]
 
 
 [tool.ruff]
+target-version = "py39"
+line-length = 88
 exclude = [".git", "build", "__pycache__", "*.ipynb"]
 
 [tool.ruff.lint]
