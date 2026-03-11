@@ -40,7 +40,7 @@ def test_validate_projection():
 
     # Test invalid projection
     projection = alt.Projection(type="albersUsa")
-    with pytest.raises(ValueError, match="Projection must be of type 'mercator'."):
+    with pytest.raises(ValueError, match=r"Projection must be of type 'mercator'\."):
         til._validate_projection(projection)
 
 

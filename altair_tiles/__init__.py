@@ -2,11 +2,11 @@ __version__ = "0.5.0dev"
 __all__ = [
     "add_attribution",
     "add_tiles",
-    "create_tiles_chart",
-    "providers",
-    "hconcat",
-    "vconcat",
     "concat",
+    "create_tiles_chart",
+    "hconcat",
+    "providers",
+    "vconcat",
 ]
 
 import copy
@@ -14,7 +14,7 @@ import hashlib
 import json
 import math
 import re
-from typing import Final, NamedTuple, Optional, Union, cast
+from typing import Any, Callable, Final, NamedTuple, Optional, Union, cast
 
 import altair as alt
 import mercantile as mt
@@ -114,6 +114,7 @@ def add_tiles(
     _rewrite_params_inplace(final_chart, "projection")
 
     return final_chart
+
 
 def create_tiles_chart(
     provider: Union[str, TileProvider] = "OpenStreetMap.Mapnik",
@@ -218,9 +219,13 @@ def create_tiles_chart(
     else:
         return tiles
 
+
 def _build_tile_url(provider: TileProvider, x: str, y: str, z: str) -> str:
     """Build a Vega expression string for a tile URL with x/y/z interpolated."""
-    fmt = lambda v: f"' + {v} + '"
+
+    def fmt(v: str) -> str:
+        return f"' + {v} + '"
+
     return "'" + provider.build_url(x=fmt(x), y=fmt(y), z=fmt(z)) + "'"
 
 
@@ -259,7 +264,9 @@ def _create_nonstandalone_tiles_chart(
         )
         evaluated_zoom_level_ceil = math.ceil(zoom)
     else:
-        p_base_tile_size = alt.param(value=_DEFAULT_TILE_SIZE, name=pname("base_tile_size"))
+        p_base_tile_size = alt.param(
+            value=_DEFAULT_TILE_SIZE, name=pname("base_tile_size")
+        )
         p_zoom_level = alt.param(
             expr=f"log((2 * PI * {p_pr_scale.name}) / {p_base_tile_size.name}) /"
             + " log(2)",
@@ -270,9 +277,7 @@ def _create_nonstandalone_tiles_chart(
     if evaluated_zoom_level_ceil is not None:
         _validate_zoom(evaluated_zoom_level_ceil, provider=provider)
 
-    p_zoom_ceil = alt.param(
-        expr=f"ceil({p_zoom_level.name})", name=pname("zoom_ceil")
-    )
+    p_zoom_ceil = alt.param(expr=f"ceil({p_zoom_level.name})", name=pname("zoom_ceil"))
     # Number of tiles per column/row, whichever is larger. Total number of tiles
     # would then be this number squared. However, this number does not account
     # for tiles which will be outside of the view, i.e. what is visible on the chart.
@@ -341,7 +346,9 @@ def _create_nonstandalone_tiles_chart(
         .transform_calculate(b=f"sequence(0, {one_side_grid_size})")
         .transform_flatten(["b"])
         .transform_calculate(
-            url=_build_tile_url(provider, x=expr_url_x, y=expr_url_y, z=p_zoom_ceil.name),
+            url=_build_tile_url(
+                provider, x=expr_url_x, y=expr_url_y, z=p_zoom_ceil.name
+            ),
             x=f"datum.a * {p_tile_size.name} + {p_dx.name} + ({p_tile_size.name} / 2)",
             y=f"datum.b * {p_tile_size.name} + {p_dy.name} + ({p_tile_size.name} / 2)",
         )
@@ -401,8 +408,10 @@ def _create_nonstandalone_tiles_chart(
             bounds=provider_bounds, zoom=evaluated_zoom_level_ceil
         )
         tiles = tiles.transform_filter(
-            f"{expr_url_x} >= {x_y_min_max.x_min} && {expr_url_y} >= {x_y_min_max.y_min}"
-            + f" && {expr_url_x} <= {x_y_min_max.x_max} && {expr_url_y} <= {x_y_min_max.y_max}"
+            f"{expr_url_x} >= {x_y_min_max.x_min} && {expr_url_y} >= "
+            f"{x_y_min_max.y_min}"
+            + f" && {expr_url_x} <= {x_y_min_max.x_max} && {expr_url_y} <= "
+            f"{x_y_min_max.y_max}"
         )
 
     tiles = tiles.add_params(
@@ -425,18 +434,28 @@ def _create_nonstandalone_tiles_chart(
         return add_attribution(tiles, provider, attribution)
     return tiles
 
+
 class _XYMinMax(NamedTuple):
     x_min: int
     y_min: int
     x_max: int
     y_max: int
 
+
 def _bounds_to_x_y_min_max(bounds: list[list[float]], zoom: int) -> _XYMinMax:
     south_west, north_east = bounds
     south, west = south_west
     north, east = north_east
-    xs, ys = zip(*((t.x, t.y) for t in mt.tiles(west=west, south=south, east=east, north=north, zooms=[zoom])))
+    xs, ys = zip(
+        *(
+            (t.x, t.y)
+            for t in mt.tiles(
+                west=west, south=south, east=east, north=north, zooms=[zoom]
+            )
+        )
+    )
     return _XYMinMax(x_min=min(xs), y_min=min(ys), x_max=max(xs), y_max=max(ys))
+
 
 def _validate_zoom(zoom: int, provider: TileProvider) -> None:
     # Follows very closely the implementation in contextily.tile._validate_zoom
@@ -453,8 +472,10 @@ def _validate_zoom(zoom: int, provider: TileProvider) -> None:
     if not (min_zoom <= zoom <= max_zoom):
         detail = f" (valid zooms: {min_zoom} - {max_zoom})" if max_zoom_known else ""
         raise ValueError(
-            f"The zoom level of {zoom} is not valid for the current tile provider{detail}."
+            f"The zoom level of {zoom} is not valid for the current tile "
+            f"provider{detail}."
         )
+
 
 def _calculate_one_side_grid_size(evaluated_zoom_level_ceil: Optional[int]) -> int:
     # Size of tile grid needs to be calculated in Python as it is not possible
@@ -474,6 +495,7 @@ def _calculate_one_side_grid_size(evaluated_zoom_level_ceil: Optional[int]) -> i
         # +2 is a small buffer to ensure edge tiles are covered.
         return min(2**evaluated_zoom_level_ceil + 2, maximum_value)
     return maximum_value
+
 
 def add_attribution(
     chart: Union[alt.Chart, alt.LayerChart],
@@ -526,16 +548,19 @@ def add_attribution(
 
     return chart
 
+
 def _resolve_provider(provider: Union[str, TileProvider]) -> TileProvider:
     if isinstance(provider, str):
-        provider = cast(TileProvider, providers.query_name(provider))
+        provider = cast("TileProvider", providers.query_name(provider))
     return provider
+
 
 def _validate_projection(projection: alt.Projection) -> None:
     if not isinstance(projection, alt.Projection):
         raise TypeError("Projection must be an alt.Projection instance.")
     if projection.type != "mercator":
         raise ValueError("Projection must be of type 'mercator'.")
+
 
 # ---------------------------------------------------------------------------
 # Projection signal name rewriting
@@ -546,6 +571,7 @@ _ANY_PROJ_RE = re.compile(r"'[^']*projection[^']*'")
 
 # The internal view name prefix used by altair_tiles for tile layer charts.
 _TILE_VIEW_PREFIX = "tiles_"
+
 
 def _rewrite_params_inplace(chart: alt.LayerChart, replacement: str) -> None:
     """Mutate ``geoScale`` / ``invert`` tile projection references in-place on
@@ -569,7 +595,8 @@ def _rewrite_params_inplace(chart: alt.LayerChart, replacement: str) -> None:
         for sub in layer:
             _rewrite_params_inplace(sub, replacement)
 
-def _rewrite_tile_projection_refs(spec: dict) -> dict:
+
+def _rewrite_tile_projection_refs(spec: dict) -> dict:  # noqa: C901
     """Post-process a Vega-Lite spec dict to rewrite tile projection signal
     references so that they match the signal names Vega-Lite's normalizer
     produces at runtime.
@@ -601,7 +628,8 @@ def _rewrite_tile_projection_refs(spec: dict) -> dict:
 
     def _collect_cells(cells: list, prefix: str) -> None:
         for i, cell in enumerate(cells):
-            # The tile name is on layer[0] (the image mark), not on the outer LayerChart.
+            # The tile name is on layer[0] (the image mark), not on the outer
+            # LayerChart.
             # Walk the first layer item to find it.
             name = cell.get("name", "")
             if not name.startswith(_TILE_VIEW_PREFIX):
@@ -610,11 +638,13 @@ def _rewrite_tile_projection_refs(spec: dict) -> dict:
                 if layers:
                     name = layers[0].get("name", "")
             if name.startswith(_TILE_VIEW_PREFIX):
-                suffix = name[len(_TILE_VIEW_PREFIX):]
+                suffix = name[len(_TILE_VIEW_PREFIX) :]
                 suffix_to_signal[suffix] = f"{prefix}{i}_projection"
             for nested_key in ("hconcat", "vconcat", "concat"):
                 if nested_key in cell:
-                    _collect_cells(cell[nested_key], f"{prefix}{i}_{nested_key[0]}concat_")
+                    _collect_cells(
+                        cell[nested_key], f"{prefix}{i}_{nested_key[0]}concat_"
+                    )
 
     for concat_key in ("hconcat", "vconcat", "concat"):
         if concat_key in spec:
@@ -642,11 +672,15 @@ def _rewrite_tile_projection_refs(spec: dict) -> dict:
 
     return spec
 
+
 # ---------------------------------------------------------------------------
 # Concat wrappers
 # ---------------------------------------------------------------------------
 
-def _wrap_concat(alt_fn, *charts, **kwargs):
+
+def _wrap_concat(
+    alt_fn: Callable[..., Any], *charts: alt.Chart, **kwargs: Any
+) -> alt.Chart:
     """Internal helper: call an altair concat function then rewrite projection refs.
 
     We serialise to a dict, rewrite the tile projection signal names to match
@@ -658,7 +692,8 @@ def _wrap_concat(alt_fn, *charts, **kwargs):
     rewritten = _rewrite_tile_projection_refs(combined.to_dict())
     return alt.Chart.from_dict(rewritten)
 
-def hconcat(*charts, **kwargs) -> alt.ConcatChart:
+
+def hconcat(*charts: alt.Chart, **kwargs: Any) -> alt.Chart:
     """Horizontally concatenate charts, correctly rewriting tile projection
     signal references for each concat cell.
 
@@ -671,7 +706,8 @@ def hconcat(*charts, **kwargs) -> alt.ConcatChart:
     """
     return _wrap_concat(alt.hconcat, *charts, **kwargs)
 
-def vconcat(*charts, **kwargs) -> alt.ConcatChart:
+
+def vconcat(*charts: alt.Chart, **kwargs: Any) -> alt.Chart:
     """Vertically concatenate charts, correctly rewriting tile projection
     signal references for each concat cell.
 
@@ -684,7 +720,8 @@ def vconcat(*charts, **kwargs) -> alt.ConcatChart:
     """
     return _wrap_concat(alt.vconcat, *charts, **kwargs)
 
-def concat(*charts, **kwargs) -> alt.ConcatChart:
+
+def concat(*charts: alt.Chart, **kwargs: Any) -> alt.Chart:
     """Concatenate charts (wrappable grid), correctly rewriting tile projection
     signal references for each concat cell.
 
